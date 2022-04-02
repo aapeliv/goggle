@@ -14,7 +14,6 @@ int main() {
   // move input cursor to start of this stream
   dump1.seekg(683660);
   CHECK(dump1.good()) << "Failed to seek";
-  ;
   // length of input stream
   size_t len = 2100345 - 683660;
   // compressed data
@@ -35,6 +34,7 @@ int main() {
   int res = BZ2_bzBuffToBuffDecompress(
       decompressed.get(), reinterpret_cast<unsigned int *>(&dlen_out),
       data.get(), len, 0, 0);
+  CHECK(res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
   CHECK(res == 0) << "Failed to decompress";
 
   dump1.close();
