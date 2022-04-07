@@ -41,5 +41,47 @@ int main() {
   CHECK(dump1.good()) << "Failed to close";
 
   LOG(INFO) << "Decompressed. Ratio was " << dlen_out / (1. * len);
+
+  rapidxml::xml_document<> xml;
+  xml.parse<0>(decompressed.get());
+
+  // first page
+  for (auto page_node = xml.first_node(); page_node != nullptr;
+       page_node = page_node->next_sibling()) {
+    LOG(INFO) << page_node->name();
+    // expect all children to just be pages
+    CHECK(std::string(page_node->name()) == "page");
+
+    uint32_t id = 0;
+    std::string title{};
+    std::string text{};
+    bool is_redirect = false;
+
+    for (auto child_node = page_node->first_node(); child_node != nullptr;
+         child_node = child_node->next_sibling()) {
+      std::string name{child_node->name()};
+      if (name == "id") {
+        id = atoi(child_node->value());
+      } else if (name == "title") {
+        title = child_node->value();
+      } else if (name == "revision") {
+        // further child node
+        text = child_node->first_node("text")->value();
+      } else if (name == "redirect") {
+        is_redirect = true;
+        break;
+      }
+    }
+
+    if (is_redirect) {
+      LOG(INFO) << "Found redirect page, skipping";
+    } else if (id == 0 || title == "" || text == "") {
+      LOG(WARNING) << "Incomplete page: id=" << id << ", title=" << title;
+    } else {
+      LOG(INFO) << "Found page; id=" << id << ", title=" << title << ", text:";
+      LOG(INFO) << text;
+    }
+  }
+
   return 0;
 }
