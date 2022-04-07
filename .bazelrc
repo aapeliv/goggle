@@ -1,0 +1,35 @@
+build --host_force_python=PY3
+build --cxxopt=-std=c++2a
+build --repo_env=CC=clang
+
+build:optz -c opt
+build:optz --copt -O3
+build:optz --copt -march=native
+
+# copied from envoy
+build:asan --define tcmalloc=disabled
+build:asan --linkopt -ldl
+build:asan --build_tag_filters=-no_san
+build:asan --test_tag_filters=-no_san
+# ASAN install its signal handler, disable ours so the stacktrace will be printed by ASAN
+build:asan --define signal_trace=disabled
+build:asan --copt -fsanitize=address,undefined
+build:asan --linkopt -fsanitize=address,undefined
+# vptr and function sanitizer are enabled in clang-asan if it is set up via bazel/setup_clang.sh.
+build:asan --copt -fno-sanitize=vptr,function
+build:asan --linkopt -fno-sanitize=vptr,function
+build:asan --copt -DADDRESS_SANITIZER=1
+build:asan --copt -D__SANITIZE_ADDRESS__
+build:asan --test_env=ASAN_OPTIONS=handle_abort=1:allow_addr2line=true:check_initialization_order=true:strict_init_order=true:detect_odr_violation=1
+build:asan --test_env=UBSAN_OPTIONS=halt_on_error=true:print_stacktrace=1
+build:asan --test_env=ASAN_SYMBOLIZER_PATH
+# ASAN needs -O1 to get reasonable performance.
+build:asan --copt -O1
+build:asan --copt -fno-optimize-sibling-calls
+# Workaround, see https://github.com/bazelbuild/bazel/issues/6932
+build:asan --copt -Wno-macro-redefined
+build:asan --copt -D_FORTIFY_SOURCE=0
+# Workaround, see https://github.com/bazelbuild/bazel/issues/4341
+build:asan --copt -DGRPC_BAZEL_BUILD
+# Dynamic link cause issues like: `dyld: malformed mach-o: load commands size (59272) > 32768`
+build:asan --dynamic_mode=off
