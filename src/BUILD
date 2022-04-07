@@ -9,3 +9,9 @@ cc_binary(
         "@httplib",
     ],
 )
+
+cc_binary(
+    name = "doc",
+    srcs = ["doc.cc"],
+    visibility = ["//visibility:public"],
+)
