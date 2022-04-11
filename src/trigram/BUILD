@@ -1,7 +1,9 @@
 cc_library(
     name = "trigram",
     hdrs = ["trigram.h"],
-    deps = [],
+    deps = [
+        "@com_github_google_glog//:glog",
+    ],
 )
 
 cc_test(

@@ -8,6 +8,15 @@ The index is basically an array of pointers to sets. The array holds
 elements (N is the length of an n-gram). Each element there points to a list of
 document IDs that have that n-gram in them.
 
+
+todo:
+* Fix up n-grams: "hello world" should produce " he", "hel", "ell", "llo",
+  "lo ", " wo", "wor", "orl", "rld", "ld ". But we currently miss " he", "ld ",
+  and produce a bogus "o w" (trigrams shouldn't go past word boundaries)
+* Think about a faster algorithm for merging (i.e. intersecting) the sets of
+  docs. E.g. just sorting the vectors and going through them once suffices,
+  instead of the current O(n^2) algorithm that repeatedly checks the second list
+  of docs. Basically we can get easy wins with a bit of preprocessing.
 */
 #pragma once
 
@@ -18,11 +27,7 @@ document IDs that have that n-gram in them.
 #include <string_view>
 #include <vector>
 
-// interface for gram index
-class NGramIndexValueType {
- public:
-  virtual void Something() = 0;
-};
+#include "glog/logging.h"
 
 // todo: this is a bit ugly
 // note starting space
@@ -36,7 +41,7 @@ constexpr size_t pow_al(size_t N, size_t result = 1) {
 }
 
 // Provides facilities for an n-gram based index
-template <size_t N, typename value_type, typename docID_t>
+template <size_t N, typename docID_t>
 class NGramIndex {
  public:
   using container_type = std::vector<docID_t>;
@@ -62,7 +67,7 @@ class NGramIndex {
     CHECK(n_gram.size() == N);
     size_t index = 0;
     for (int i = 0; i < N; ++i) {
-      char c = tolower(n_gram[i]);
+      auto c = n_gram[i];
       bool found = false;
       for (int z = 0; z < alphabet_length; ++z) {
         if (c == alphabet[z]) {
@@ -87,10 +92,8 @@ class NGramIndex {
   }
 
   /*
-  Retrieve documents from the index using a query string
-
-  TODO: this returns a list of candidates, they may not contain the query
-  string!
+  Retrieve documents from the index using a query string, note that this may
+  (with low probability) return also documents that don't match the query.
   */
   container_type FindPossibleDocuments(const std::string_view& query) {
     container_type remaining_docs{};
@@ -103,8 +106,7 @@ class NGramIndex {
         remaining_docs = {docs.begin(), docs.end()};
       } else {
         // for others we intersect
-        // TODO: this is a really dumb + slow algorithm, eventually we want
-        // these sorted
+        // todo: this is a really dumb + slow algorithm
         auto it = remaining_docs.begin();
         while (it != remaining_docs.end()) {
           docID_t doc_id = *it;
@@ -128,4 +130,4 @@ class NGramIndex {
   }
 };
 
-using TrigramIndex = NGramIndex<3, std::vector<uint32_t>, uint32_t>;
+using TrigramIndex = NGramIndex<3, uint32_t>;
