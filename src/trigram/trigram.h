@@ -98,6 +98,7 @@ class NGramIndex {
   container_type FindPossibleDocuments(const std::string_view& query) {
     container_type remaining_docs{};
     for (int i = 0; i < query.size() - N + 1; ++i) {
+      if (query.substr(i, N)[1] == 32) continue;
       auto ix = ConvertNGramToIx(query.substr(i, N));
       container_type& docs = GetContainerAt(ix);
       if (i == 0) {
