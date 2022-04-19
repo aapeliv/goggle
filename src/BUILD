@@ -1,5 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
+cc_library(
+    name = "common",
+    hdrs = ["common.h"],
+    visibility = ["//visibility:public"],
+)
+
 cc_binary(
     name = "server",
     srcs = ["server.cc"],

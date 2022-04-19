@@ -1,18 +1,19 @@
 #include "src/doc.h"
 
 #include <iostream>
+#include <memory>
 
 #include "gtest/gtest.h"
 
 TEST(Document, Basic) {
-  Document *columbia = new Document(1, "Columbia", "NY, NY");
-  Document *brown = new Document(2, "Brown", "Providence, RI");
-  Document *princeton = new Document(3, "Princeton", "Princeton, NJ");
-  Document *harvard = new Document(4, "Harvard", "Cambridge, MA");
-  Document *dartmouth = new Document(5, "Dartmouth", "Hanover, NH");
-  Document *cornell = new Document(6, "Cornell", "Cornell, NY");
-  Document *penn = new Document(7, "UPenn", "Pennsylvania, PA");
-  Document *yale = new Document(8, "Yale", "New Haven, CT");
+  auto columbia = std::make_unique<Document>(1, "Columbia", "NY, NY");
+  auto brown = std::make_unique<Document>(2, "Brown", "Providence, RI");
+  auto princeton = std::make_unique<Document>(3, "Princeton", "Princeton, NJ");
+  auto harvard = std::make_unique<Document>(4, "Harvard", "Cambridge, MA");
+  auto dartmouth = std::make_unique<Document>(5, "Dartmouth", "Hanover, NH");
+  auto cornell = std::make_unique<Document>(6, "Cornell", "Cornell, NY");
+  auto penn = std::make_unique<Document>(7, "UPenn", "Pennsylvania, PA");
+  auto yale = std::make_unique<Document>(8, "Yale", "New Haven, CT");
 
   std::cout << columbia->get_title() << "\n";
   std::cout << brown->get_title() << "\n";
