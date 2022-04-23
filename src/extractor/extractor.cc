@@ -2,7 +2,11 @@
 #include <iostream>
 #include <memory>
 #include <string>
+<<<<<<< HEAD
 #include <regex>
+=======
+
+>>>>>>> 96829f0530ad013556ec55bc718b388f83a473f5
 #include "glog/logging.h"
 #include "src/doc.h"
 // #include "src/stripper/stripper.h"
@@ -63,68 +67,149 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
   }
 
   if (is_redirect) {
-    LOG(INFO) << "Found redirect page, skipping";
+    // LOG(INFO) << "Found redirect page, skipping";
     return nullptr;
   } else if (id == 0 || title == "" || text == "") {
     LOG(WARNING) << "Incomplete page: id=" << id << ", title=" << title;
     return nullptr;
   } else {
+<<<<<<< HEAD
     LOG(INFO) << "Found page; id=" << id << ", title=" << title
               << ", text length=" << text.size();
     LOG(INFO) << "TEXT HERE\n";
     // LOG(INFO) << strip_text(text) << "n";
     LOG(INFO) << "TEXT THERE\n";
+=======
+    // LOG(INFO) << "Found page; id=" << id << ", title=" << title << ", text
+    // length=" << text.size();
+>>>>>>> 96829f0530ad013556ec55bc718b388f83a473f5
     return std::make_unique<Document>(id, title, text);
   }
 }
 
-int main() {
-  std::ifstream dump1;
-  dump1.open(
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2");
-  // move input cursor to start of this stream
-  dump1.seekg(683660);
-  CHECK(dump1.good()) << "Failed to seek";
-  // length of input stream
-  size_t len = 2100345 - 683660;
-  // compressed data
-  auto data = std::unique_ptr<char[]>(new char[len]);
-  // read the compressed data from the middle of the file
-  dump1.read(data.get(), len);
-  CHECK(dump1.good()) << "Failed to read";
+std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
+    size_t dump_sz, std::string filename) {
+  std::vector<std::pair<size_t, size_t>> chunks{0};
 
-  // decompressed length: guesstimate at 5* compressed size (for compression
-  // ratio of 1 to 5)
-  size_t dlen = len * 5;
-  // decompressed data
-  auto decompressed = std::unique_ptr<char[]>(new char[dlen]);
-  // following function will fill in the true size of output here
-  size_t dlen_out = dlen;
+  std::ifstream index(filename);
+  // dumb way to get file size
+  index.seekg(0, std::ios::end);
+  size_t index_len_compressed = index.tellg();
+  // back to start
+  index.seekg(0);
+  size_t index_len_decompressed_allocated = 5 * index_len_compressed;
+  size_t index_len_decompressed_actual = index_len_decompressed_allocated;
+  auto index_data =
+      std::unique_ptr<char[]>(new char[index_len_decompressed_allocated]);
+  {
+    auto index_data_compressed =
+        std::unique_ptr<char[]>(new char[index_len_compressed]);
 
-  // decompress the stream
-  int res = BZ2_bzBuffToBuffDecompress(
-      decompressed.get(), reinterpret_cast<unsigned int*>(&dlen_out),
-      data.get(), len, 0, 0);
-  CHECK(res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
-  CHECK(res == 0) << "Failed to decompress";
+    CHECK(index.good()) << "Failed to seek";
+    index.read(index_data_compressed.get(), index_len_compressed);
+    CHECK(index.good()) << "Failed to read";
 
-  dump1.close();
-  CHECK(dump1.good()) << "Failed to close";
+    // decompress the stream
+    int index_res = BZ2_bzBuffToBuffDecompress(
+        index_data.get(),
+        reinterpret_cast<unsigned int*>(&index_len_decompressed_actual),
+        index_data_compressed.get(), index_len_compressed, 0, 0);
+    CHECK(index_res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
+    CHECK(index_res == 0) << "Failed to decompress";
+  }
 
-  LOG(INFO) << "Decompressed. Ratio was " << dlen_out / (1. * len);
+  size_t offset = 0;
 
-  rapidxml::xml_document<> xml;
-  xml.parse<0>(decompressed.get());
+  std::stringstream ss(std::move(index_data.get()));
 
-  // first page
-  for (auto page_node = xml.first_node(); page_node != nullptr;
-       page_node = page_node->next_sibling()) {
-    auto doc = ParseXml(page_node);
-    if (doc != nullptr) {
-      LOG(INFO) << doc->get_title();
+  std::string line;
+  while (std::getline(ss, line)) {
+    std::string first_bit;
+    std::stringstream line_ss(line);
+    std::getline(line_ss, first_bit, ':');
+    size_t new_offset = std::stoi(first_bit);
+    if (new_offset != offset) {
+      if (offset != 0) {
+        chunks.push_back(std::make_pair(offset, new_offset));
+      }
+      offset = new_offset;
     }
   }
+  chunks.push_back(std::make_pair(offset, dump_sz));
+  return chunks;
+}
+
+int main() {
+  std::ifstream dump(
+      "src/extractor/"
+      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2");
+
+  dump.seekg(0, std::ios::end);
+  size_t dump_sz = dump.tellg();
+  dump.seekg(0);
+  LOG(INFO) << "dump_sz: " << dump_sz;
+
+  auto chunks = extract_chunks_from_index_file(
+      dump_sz,
+      "src/extractor/"
+      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2");
+
+  for (auto& [start, end] : chunks) {
+    LOG(INFO) << "chunk: " << start << " to " << end << ", at "
+              << 100. * (double)start / dump_sz << "%";
+
+    // move input cursor to start of this stream
+    dump.seekg(start);
+    CHECK(dump.good()) << "Failed to seek";
+    // length of input stream
+    size_t len = end - start;
+    // compressed data
+    auto data = std::unique_ptr<char[]>(new char[len]);
+    // read the compressed data from the middle of the file
+    dump.read(data.get(), len);
+    CHECK(dump.good()) << "Failed to read";
+
+    // decompressed length: guesstimate at 5* compressed size (for compression
+    // ratio of 1 to 5)
+    size_t dlen = len * 5;
+    // decompressed data
+    auto decompressed = std::unique_ptr<char[]>(new char[dlen]);
+    // following function will fill in the true size of output here
+    size_t dlen_out = dlen;
+
+    // decompress the stream
+    int res = BZ2_bzBuffToBuffDecompress(
+        decompressed.get(), reinterpret_cast<unsigned int*>(&dlen_out),
+        data.get(), len, 0, 0);
+    CHECK(res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
+    CHECK(res == 0) << "Failed to decompress";
+
+    LOG(INFO) << "Decompressed. Ratio was " << dlen_out / (1. * len);
+
+    CHECK(dlen_out + 1 < dlen) << "Not enough space";
+    decompressed.get()[dlen_out] = '\0';
+
+    // std::ofstream ostr("out-" + std::to_string(start) + "-" +
+    //                    std::to_string(end) + ".xml");
+    // ostr << decompressed.get();
+
+    // LOG(INFO) << decompressed.get();
+
+    rapidxml::xml_document<> xml;
+    xml.parse<0>(decompressed.get());
+
+    // first page
+    for (auto page_node = xml.first_node(); page_node != nullptr;
+         page_node = page_node->next_sibling()) {
+      auto doc = ParseXml(page_node);
+      if (doc != nullptr) {
+        // LOG(INFO) << doc->get_title();
+      }
+    }
+  }
+
+  dump.close();
+  CHECK(dump.good()) << "Failed to close";
 
   return 0;
 }
