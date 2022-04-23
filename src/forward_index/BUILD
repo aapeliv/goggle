@@ -2,6 +2,7 @@ cc_library(
     name = "forward_index",
     srcs = ["forward_index.cc"],
     hdrs = ["forward_index.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "//src:common",
         "//src:doc",

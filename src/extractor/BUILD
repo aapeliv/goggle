@@ -8,7 +8,6 @@ cc_library(
         "//third_party/bzip2",
         "//third_party/rapidxml",
         "@com_github_google_glog//:glog",
-        "@httplib",
     ],
 )
 
@@ -17,8 +16,7 @@ cc_test(
     size = "medium",
     srcs = ["extractor_test.cc"],
     data = [
-        "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2",
-        "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+        "//data",
     ],
     deps = [
         ":extractor",

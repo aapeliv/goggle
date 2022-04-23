@@ -9,8 +9,15 @@ cc_library(
 cc_binary(
     name = "server",
     srcs = ["server.cc"],
+    data = [
+        "//data",
+    ],
     visibility = ["//visibility:public"],
     deps = [
+        ":doc",
+        "//src/extractor",
+        "//src/forward_index",
+        "//src/trigram",
         "@com_github_google_glog//:glog",
         "@httplib",
     ],
