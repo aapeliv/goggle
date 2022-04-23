@@ -1,3 +1,5 @@
+#include "src/extractor/extractor.h"
+
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -139,9 +141,6 @@ void extract_dump(std::string index_filename, std::string dump_filename,
   auto chunks = extract_chunks_from_index_file(dump_sz, index_filename);
 
   for (auto& [start, end] : chunks) {
-    LOG(INFO) << "chunk: " << start << " to " << end << ", at "
-              << 100. * (double)start / dump_sz << "%";
-
     // move input cursor to start of this stream
     dump.seekg(start);
     CHECK(dump.good()) << "Failed to seek";
@@ -168,8 +167,6 @@ void extract_dump(std::string index_filename, std::string dump_filename,
     CHECK(res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
     CHECK(res == 0) << "Failed to decompress";
 
-    LOG(INFO) << "Decompressed. Ratio was " << dlen_out / (1. * len);
-
     CHECK(dlen_out + 1 < dlen) << "Not enough space";
     decompressed.get()[dlen_out] = '\0';
 
@@ -190,19 +187,12 @@ void extract_dump(std::string index_filename, std::string dump_filename,
         process_doc(std::move(doc));
       }
     }
+
+    LOG(INFO) << "chunk: " << start << " to " << end << ", at "
+              << 100. * (double)end / dump_sz << "%, ratio was "
+              << dlen_out / (1. * len);
   }
 
   dump.close();
   CHECK(dump.good()) << "Failed to close";
-}
-
-int main() {
-  extract_dump(
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2",
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
-      [](std::unique_ptr<Document> doc) { LOG(INFO) << doc->get_title(); });
-
-  return 0;
 }
