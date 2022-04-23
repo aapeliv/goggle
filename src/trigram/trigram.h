@@ -20,6 +20,7 @@ todo:
 */
 #pragma once
 
+#include <ctype.h>
 #include <stdint.h>
 
 #include <array>
@@ -67,7 +68,7 @@ class NGramIndex {
     CHECK(n_gram.size() == N);
     size_t index = 0;
     for (int i = 0; i < N; ++i) {
-      auto c = n_gram[i];
+      auto c = std::tolower(n_gram[i]);
       bool found = false;
       for (int z = 0; z < alphabet_length; ++z) {
         if (c == alphabet[z]) {
@@ -76,7 +77,7 @@ class NGramIndex {
           break;
         }
       }
-      CHECK(found) << "n-gram had illegal stuff: " << n_gram;
+      // CHECK(found) << "n-gram had illegal stuff: " << n_gram;
     }
     return index;
   }
@@ -87,7 +88,10 @@ class NGramIndex {
   void AddDocument(docID_t doc_id, const std::string_view& text) {
     for (int i = 0; i < text.size() - N + 1; ++i) {
       auto ix = ConvertNGramToIx(text.substr(i, N));
-      GetContainerAt(ix).emplace_back(doc_id);
+      auto c = GetContainerAt(ix);
+      if (std::find(c.begin(), c.end(), doc_id) == c.end()) {
+        GetContainerAt(ix).emplace_back(doc_id);
+      }
     }
   }
 
@@ -98,7 +102,7 @@ class NGramIndex {
   container_type FindPossibleDocuments(const std::string_view& query) {
     container_type remaining_docs{};
     for (int i = 0; i < query.size() - N + 1; ++i) {
-      if (query.substr(i, N)[1] == 32) continue;
+      // if (query.substr(i, N)[1] == 32) continue;
       auto ix = ConvertNGramToIx(query.substr(i, N));
       container_type& docs = GetContainerAt(ix);
       if (i == 0) {

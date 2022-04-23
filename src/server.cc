@@ -37,14 +37,22 @@ int main() {
     }
     auto query = req.get_param_value("q");
     std::stringstream ss{};
+    bool is_first = true;
     ss << "{\"results\": [";
     for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
       auto doc = forward_ix.GetDocument(doc_id);
+      LOG(INFO) << "found possible doc: " << doc_id
+                << ", title = " << doc.get_title();
+      if (is_first) {
+        is_first = false;
+      } else {
+        ss << ",";
+      }
       ss << "{";
       ss << "\"id\": " << doc.get_id() << ",";
-      ss << "\"title\": \"" << doc.get_title() << "\",";
+      ss << "\"title\": \"" << doc.get_title() << "\"";
       // ss << \"text\": " << doc.get_text();
-      ss << "},";
+      ss << "}";
     }
     ss << "]}";
     res.set_content(ss.str(), "application/json; charset=utf-8");
