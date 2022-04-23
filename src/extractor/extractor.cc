@@ -1,11 +1,41 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
-
+#include <string>
+#include <regex>
 #include "glog/logging.h"
 #include "src/doc.h"
+// #include "src/stripper/stripper.h"
 #include "third_party/bzip2/bzlib.h"
 #include "third_party/rapidxml/rapidxml.hpp"
+
+using std::string; 
+
+string strip_text(const string s)
+{ 
+    string copy; 
+    
+    std::regex rgx(".*<text.*>(.*)</text>.*");
+    std::smatch match; 
+
+    copy = std::regex_replace(s, rgx, "$1");
+
+    if (copy.find("== References ==")) 
+        copy = copy.substr(0, copy.find("== References =="));
+        
+    std::regex rgx2("[{{].*[}}]"); // if between {{ }} delete whole thing
+    copy = std::regex_replace(copy, rgx2, "");  
+    
+    std::regex case1(R"(\[\[([^\[\]\|]+)\]\])");
+    std::regex case2(R"(\[\[([^\[\]\|]+)\|([^\[\]\|]+)\]\])");
+    copy = std::regex_replace(copy, case1, "$1");
+    copy = std::regex_replace(copy, case2, "$2");
+    std::regex rgx6("'''");
+    copy = std::regex_replace(copy, rgx6, ""); 
+
+    return copy;
+
+}
 
 std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
   // expect all children to just be pages
@@ -41,6 +71,9 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
   } else {
     LOG(INFO) << "Found page; id=" << id << ", title=" << title
               << ", text length=" << text.size();
+    LOG(INFO) << "TEXT HERE\n";
+    // LOG(INFO) << strip_text(text) << "n";
+    LOG(INFO) << "TEXT THERE\n";
     return std::make_unique<Document>(id, title, text);
   }
 }

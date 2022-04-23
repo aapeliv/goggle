@@ -39,36 +39,22 @@ string strip_text(const string s)
 { 
     string copy; 
     
-    // 1. take text between <text ...> and </text> 
     std::regex rgx(".*<text.*>(.*)</text>.*");
     std::smatch match; 
 
-    // if (std::regex_search(s.begin(), s.end(), match, rgx))
-    //     copy = match[0]; 
-    // else
-    //     cout << "No match\n"; 
     copy = std::regex_replace(s, rgx, "$1");
 
-    // 2. remove everything from References onwards (if References exists)
     if (copy.find("== References ==")) 
         copy = copy.substr(0, copy.find("== References =="));
         
-    // 3. strip unnecessary formatting
     std::regex rgx2("[{{].*[}}]"); // if between {{ }} delete whole thing
     copy = std::regex_replace(copy, rgx2, "");  
     
-    // std::regex rgx3(R"(\[\[([^\[\]\|]+) \| ([^\[\]\|]+)\]\])");
     std::regex case1(R"(\[\[([^\[\]\|]+)\]\])");
     std::regex case2(R"(\[\[([^\[\]\|]+)\|([^\[\]\|]+)\]\])");
     copy = std::regex_replace(copy, case1, "$1");
     copy = std::regex_replace(copy, case2, "$2");
-
-    // // between [[ ]] without a | in the middle -- just remove [[ and ]]
-    // std::regex rgx4("\\[\\["); 
-    // std::regex rgx5("\\]\\]");
     std::regex rgx6("'''");
-    // copy = std::regex_replace(copy, rgx4, ""); 
-    // copy = std::regex_replace(copy, rgx5, ""); 
     copy = std::regex_replace(copy, rgx6, ""); 
 
     return copy;
