@@ -6,14 +6,15 @@
 #include <memory>
 #include <regex>
 #include <string>
-
+#include <chrono>
 #include "glog/logging.h"
 #include "src/doc.h"
-// #include "src/stripper/stripper.h"
 #include "third_party/bzip2/bzlib.h"
 #include "third_party/rapidxml/rapidxml.hpp"
 
 using std::string;
+typedef std::chrono::high_resolution_clock hrc; 
+typedef std::chrono::milliseconds ms; 
 
 string strip_text(const string s) {
   string copy;
@@ -39,6 +40,21 @@ string strip_text(const string s) {
   return copy;
 }
 
+string remove_nonalphabetical(string s)
+{
+    int j = 0;
+    for (int i = 0; i < s.size(); i++) {
+        // Store only valid characters
+        if ((s[i] >= 'A' && s[i] <= 'Z') || (isspace(s[i])) || 
+            (s[i] >='a' && s[i] <= 'z'))
+        {
+            s[j] = s[i];
+            j++;
+        }
+    }
+    return s.substr(0, j); 
+}
+
 std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
   // expect all children to just be pages
   CHECK(std::string(page_node->name()) == "page");
@@ -58,6 +74,7 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
     } else if (name == "revision") {
       // further child node
       text = child_node->first_node("text")->value();
+      text = remove_nonalphabetical(text);
     } else if (name == "redirect") {
       is_redirect = true;
       break;
@@ -131,7 +148,12 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
 
 void extract_dump(std::string index_filename, std::string dump_filename,
                   std::function<void(std::unique_ptr<Document>)> process_doc) {
+          
   std::ifstream dump(dump_filename);
+
+  auto t0 = hrc::now(); 
+  auto t1 = hrc::now(); 
+  auto total_time = std::chrono::duration_cast<ms>(t0-t0); 
 
   dump.seekg(0, std::ios::end);
   size_t dump_sz = dump.tellg();
@@ -182,8 +204,15 @@ void extract_dump(std::string index_filename, std::string dump_filename,
     // first page
     for (auto page_node = xml.first_node(); page_node != nullptr;
          page_node = page_node->next_sibling()) {
+      t0 = hrc::now();
       auto doc = ParseXml(page_node);
+      t1 = hrc::now();
       if (doc != nullptr) {
+        // t0 = hrc::now();
+        // remove_nonalphabetical(doc->get_text()); 
+        // t1 = hrc::now();
+        // LOG(INFO) << remove_nonalphabetical(doc->get_text()) << "\n";
+        total_time += std::chrono::duration_cast<ms>(t1-t0);
         process_doc(std::move(doc));
       }
     }
@@ -191,6 +220,7 @@ void extract_dump(std::string index_filename, std::string dump_filename,
     LOG(INFO) << "chunk: " << start << " to " << end << ", at "
               << 100. * (double)end / dump_sz << "%, ratio was "
               << dlen_out / (1. * len);
+    LOG(INFO) << "text processing time: " << total_time.count() << " ms\n";
   }
 
   dump.close();
