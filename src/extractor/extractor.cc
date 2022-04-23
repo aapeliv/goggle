@@ -1,44 +1,42 @@
+#include "src/extractor/extractor.h"
+
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <memory>
-#include <string>
-<<<<<<< HEAD
 #include <regex>
-=======
+#include <string>
 
->>>>>>> 96829f0530ad013556ec55bc718b388f83a473f5
 #include "glog/logging.h"
 #include "src/doc.h"
 // #include "src/stripper/stripper.h"
 #include "third_party/bzip2/bzlib.h"
 #include "third_party/rapidxml/rapidxml.hpp"
 
-using std::string; 
+using std::string;
 
-string strip_text(const string s)
-{ 
-    string copy; 
-    
-    std::regex rgx(".*<text.*>(.*)</text>.*");
-    std::smatch match; 
+string strip_text(const string s) {
+  string copy;
 
-    copy = std::regex_replace(s, rgx, "$1");
+  std::regex rgx(".*<text.*>(.*)</text>.*");
+  std::smatch match;
 
-    if (copy.find("== References ==")) 
-        copy = copy.substr(0, copy.find("== References =="));
-        
-    std::regex rgx2("[{{].*[}}]"); // if between {{ }} delete whole thing
-    copy = std::regex_replace(copy, rgx2, "");  
-    
-    std::regex case1(R"(\[\[([^\[\]\|]+)\]\])");
-    std::regex case2(R"(\[\[([^\[\]\|]+)\|([^\[\]\|]+)\]\])");
-    copy = std::regex_replace(copy, case1, "$1");
-    copy = std::regex_replace(copy, case2, "$2");
-    std::regex rgx6("'''");
-    copy = std::regex_replace(copy, rgx6, ""); 
+  copy = std::regex_replace(s, rgx, "$1");
 
-    return copy;
+  if (copy.find("== References =="))
+    copy = copy.substr(0, copy.find("== References =="));
 
+  std::regex rgx2("[{{].*[}}]");  // if between {{ }} delete whole thing
+  copy = std::regex_replace(copy, rgx2, "");
+
+  std::regex case1(R"(\[\[([^\[\]\|]+)\]\])");
+  std::regex case2(R"(\[\[([^\[\]\|]+)\|([^\[\]\|]+)\]\])");
+  copy = std::regex_replace(copy, case1, "$1");
+  copy = std::regex_replace(copy, case2, "$2");
+  std::regex rgx6("'''");
+  copy = std::regex_replace(copy, rgx6, "");
+
+  return copy;
 }
 
 std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
@@ -73,16 +71,8 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
     LOG(WARNING) << "Incomplete page: id=" << id << ", title=" << title;
     return nullptr;
   } else {
-<<<<<<< HEAD
-    LOG(INFO) << "Found page; id=" << id << ", title=" << title
-              << ", text length=" << text.size();
-    LOG(INFO) << "TEXT HERE\n";
-    // LOG(INFO) << strip_text(text) << "n";
-    LOG(INFO) << "TEXT THERE\n";
-=======
     // LOG(INFO) << "Found page; id=" << id << ", title=" << title << ", text
     // length=" << text.size();
->>>>>>> 96829f0530ad013556ec55bc718b388f83a473f5
     return std::make_unique<Document>(id, title, text);
   }
 }
@@ -139,25 +129,18 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
   return chunks;
 }
 
-int main() {
-  std::ifstream dump(
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2");
+void extract_dump(std::string index_filename, std::string dump_filename,
+                  std::function<void(std::unique_ptr<Document>)> process_doc) {
+  std::ifstream dump(dump_filename);
 
   dump.seekg(0, std::ios::end);
   size_t dump_sz = dump.tellg();
   dump.seekg(0);
   LOG(INFO) << "dump_sz: " << dump_sz;
 
-  auto chunks = extract_chunks_from_index_file(
-      dump_sz,
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2");
+  auto chunks = extract_chunks_from_index_file(dump_sz, index_filename);
 
   for (auto& [start, end] : chunks) {
-    LOG(INFO) << "chunk: " << start << " to " << end << ", at "
-              << 100. * (double)start / dump_sz << "%";
-
     // move input cursor to start of this stream
     dump.seekg(start);
     CHECK(dump.good()) << "Failed to seek";
@@ -184,8 +167,6 @@ int main() {
     CHECK(res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
     CHECK(res == 0) << "Failed to decompress";
 
-    LOG(INFO) << "Decompressed. Ratio was " << dlen_out / (1. * len);
-
     CHECK(dlen_out + 1 < dlen) << "Not enough space";
     decompressed.get()[dlen_out] = '\0';
 
@@ -203,13 +184,15 @@ int main() {
          page_node = page_node->next_sibling()) {
       auto doc = ParseXml(page_node);
       if (doc != nullptr) {
-        // LOG(INFO) << doc->get_title();
+        process_doc(std::move(doc));
       }
     }
+
+    LOG(INFO) << "chunk: " << start << " to " << end << ", at "
+              << 100. * (double)end / dump_sz << "%, ratio was "
+              << dlen_out / (1. * len);
   }
 
   dump.close();
   CHECK(dump.good()) << "Failed to close";
-
-  return 0;
 }
