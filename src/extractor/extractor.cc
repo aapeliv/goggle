@@ -1,4 +1,5 @@
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -98,20 +99,16 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
   return chunks;
 }
 
-int main() {
-  std::ifstream dump(
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2");
+void extract_dump(std::string index_filename, std::string dump_filename,
+                  std::function<void(std::unique_ptr<Document>)> process_doc) {
+  std::ifstream dump(dump_filename);
 
   dump.seekg(0, std::ios::end);
   size_t dump_sz = dump.tellg();
   dump.seekg(0);
   LOG(INFO) << "dump_sz: " << dump_sz;
 
-  auto chunks = extract_chunks_from_index_file(
-      dump_sz,
-      "src/extractor/"
-      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2");
+  auto chunks = extract_chunks_from_index_file(dump_sz, index_filename);
 
   for (auto& [start, end] : chunks) {
     LOG(INFO) << "chunk: " << start << " to " << end << ", at "
@@ -162,13 +159,22 @@ int main() {
          page_node = page_node->next_sibling()) {
       auto doc = ParseXml(page_node);
       if (doc != nullptr) {
-        // LOG(INFO) << doc->get_title();
+        process_doc(std::move(doc));
       }
     }
   }
 
   dump.close();
   CHECK(dump.good()) << "Failed to close";
+}
+
+int main() {
+  extract_dump(
+      "src/extractor/"
+      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2",
+      "src/extractor/"
+      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+      [](std::unique_ptr<Document> doc) { LOG(INFO) << doc->get_title(); });
 
   return 0;
 }
