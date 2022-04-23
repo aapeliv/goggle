@@ -2,7 +2,6 @@ import './App.css';
 import DATA from './MOCK_DATA.json'
 import {useState} from 'react'
 
-
 function App() {
   const [searchTerm, setSearchTerm] = useState("")
   return (
@@ -10,8 +9,14 @@ function App() {
       <input 
       type = "text" 
       placeholder = "Search String" 
-      onChange = {(event) => {
-        setSearchTerm(event.target.value);
+      // onChange = {(event) => {
+      //   setSearchTerm(event.target.value);
+      // }}
+      onKeyDown={(event) => {
+        if (event.key=== 'Enter'){
+          console.log("Enter key pressed")
+          setSearchTerm(event.target.value)
+        }
       }}
       />
       {DATA.filter((val) => {
