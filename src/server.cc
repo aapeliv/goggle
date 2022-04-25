@@ -1,3 +1,4 @@
+#include <chrono>
 #include <memory>
 
 #include "glog/logging.h"
@@ -6,6 +7,8 @@
 #include "src/extractor/extractor.h"
 #include "src/forward_index/forward_index.h"
 #include "src/trigram/trigram.h"
+
+using clk = std::chrono::steady_clock;
 
 int main() {
   LOG(INFO) << "Starting The Wikipedia Goggle.";
@@ -33,20 +36,27 @@ int main() {
   });
 
   srv.Get("/query", [&](const httplib::Request& req, httplib::Response& res) {
+    auto start = clk::now();
     if (!req.has_param("q")) {
       res.set_content("{\"error\": \"missing query\"}",
                       "application/json; charset=utf-8");
     }
     auto query = req.get_param_value("q");
+    int limit = -1;
+    if (req.has_param("pl")) {
+      limit = std::stoi(req.get_param_value("pl"));
+    }
     std::stringstream ss{};
     bool is_first = true;
     ss << "{\"results\": [";
     size_t ix_matches = 0;
     size_t real_matches = 0;
     for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
+      if (limit == 0) break;
       auto doc = forward_ix.GetDocument(doc_id);
       ++ix_matches;
       if (doc.get_text().find(query) != std::string::npos) {
+        --limit;
         ++real_matches;
         // LOG(INFO) << "found possible doc: " << doc_id
         //           << ", title = " << doc.get_title();
@@ -67,10 +77,18 @@ int main() {
     }
     ss << "]}";
     res.set_content(ss.str(), "application/json; charset=utf-8");
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        clk::now() - start)
+                        .count();
+    LOG(INFO) << "Searched for \"" << query << "\"";
     LOG(INFO) << "Matched " << ix_matches << " docs using index, i.e. "
               << (double)100. * ix_matches / forward_ix.DocumentCount() << " %";
     LOG(INFO) << "Real matches: " << real_matches << ", i.e. "
               << (double)100. * real_matches / ix_matches << " % of ix matches";
+    LOG(INFO) << "Total matched "
+              << (double)100. * real_matches / forward_ix.DocumentCount()
+              << " %";
+    LOG(INFO) << "Took " << std::to_string(duration) << " ms";
   });
 
   LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";

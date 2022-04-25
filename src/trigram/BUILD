@@ -1,9 +1,11 @@
 cc_library(
     name = "trigram",
+    srcs = ["trigram.cc"],
     hdrs = ["trigram.h"],
     visibility = ["//visibility:public"],
     deps = [
         ":trigram_splitter",
+        "//src:common",
         "@com_github_google_glog//:glog",
     ],
 )

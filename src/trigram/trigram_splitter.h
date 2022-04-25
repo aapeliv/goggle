@@ -8,6 +8,8 @@
 using trigram_ix_t = unsigned short;
 
 constexpr static size_t alphabet_length = 'z' - 'a' + 2;
+constexpr static size_t ngram_count =
+    alphabet_length * alphabet_length * alphabet_length;
 
 constexpr trigram_ix_t char_to_number(char c);
 
