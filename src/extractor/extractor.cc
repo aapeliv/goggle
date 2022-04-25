@@ -7,13 +7,14 @@
 #include <memory>
 #include <regex>
 #include <string>
-
+#include <vector>
 #include "glog/logging.h"
 #include "src/doc.h"
 #include "third_party/bzip2/bzlib.h"
 #include "third_party/rapidxml/rapidxml.hpp"
 
 using std::string;
+using std::vector;
 typedef std::chrono::high_resolution_clock hrc;
 typedef std::chrono::milliseconds ms;
 
@@ -41,7 +42,30 @@ string strip_text(const string s) {
   return copy;
 }
 
-string remove_nonalphabetical(string s) {
+vector<string> extract_links(string s)
+{
+  // links = vector<string>; 
+  vector<string> links; 
+  int i = 0; 
+  while (i < s.size())
+  {
+    if (s[i] == '[' && s[i+1] == '[')
+    {
+      int j = i+2; 
+      while (s[j] != '|' && s[j] != ']')
+        j++; 
+      links.push_back(s.substr(i+2, j-(i+2))); 
+      i = j; 
+    } else 
+    {
+      i++; 
+    }
+  }
+  return links; 
+}
+
+string remove_nonalphabetical(string s) 
+{
   int j = 0;
   bool last_skipped = false;
   for (int i = 0; i < s.size(); i++) {
@@ -69,7 +93,6 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
   std::string title{};
   std::string text{};
   bool is_redirect = false;
-
   for (auto child_node = page_node->first_node(); child_node != nullptr;
        child_node = child_node->next_sibling()) {
     std::string name{child_node->name()};
@@ -78,8 +101,11 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
     } else if (name == "title") {
       title = child_node->value();
     } else if (name == "revision") {
-      // further child node
+      // further child` node
       text = child_node->first_node("text")->value();
+      vector<string> links = extract_links(text); // everything between [[ ]] and [[ | ]]
+      // for (auto link : links)
+      //   std::cout << link << "\n"; 
       text = remove_nonalphabetical(text);
     } else if (name == "redirect") {
       is_redirect = true;
