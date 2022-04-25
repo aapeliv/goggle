@@ -29,11 +29,7 @@ todo:
 #include <vector>
 
 #include "glog/logging.h"
-
-// todo: this is a bit ugly
-// note starting space
-constexpr static auto alphabet = " abcdefghijklmnopqrstuvwxyz";
-constexpr static size_t alphabet_length = 27;
+#include "src/trigram/trigram_splitter.h"
 
 // computes alphabet_length ^ N as a constexpr!
 // (al = alphabet_length)
@@ -62,36 +58,11 @@ class NGramIndex {
   NGramIndex() : data_(new std::array<container_type, ngram_count>) {}
 
   /*
-  Computes the index in the array of a given n-gram
-  */
-  size_t ConvertNGramToIx(const std::string_view& n_gram) {
-    CHECK(n_gram.size() == N);
-    size_t index = 0;
-    for (int i = 0; i < N; ++i) {
-      auto c = std::tolower(n_gram[i]);
-      bool found = false;
-      for (int z = 0; z < alphabet_length; ++z) {
-        if (c == alphabet[z]) {
-          index += z * pow_al(i);
-          found = true;
-          break;
-        }
-      }
-      // CHECK(found) << "n-gram had illegal stuff: " << n_gram;
-    }
-    return index;
-  }
-
-  /*
   Add a document to the index
   */
   void AddDocument(docID_t doc_id, const std::string_view& text) {
-    for (int i = 0; i < text.size() - N + 1; ++i) {
-      auto ix = ConvertNGramToIx(text.substr(i, N));
-      auto c = GetContainerAt(ix);
-      if (std::find(c.begin(), c.end(), doc_id) == c.end()) {
-        GetContainerAt(ix).emplace_back(doc_id);
-      }
+    for (auto& ix : split_into_trigrams(text)) {
+      GetContainerAt(ix).emplace_back(doc_id);
     }
   }
 
@@ -100,12 +71,13 @@ class NGramIndex {
   (with low probability) return also documents that don't match the query.
   */
   container_type FindPossibleDocuments(const std::string_view& query) {
+    auto trigrams = split_into_trigrams(query);
     container_type remaining_docs{};
-    for (int i = 0; i < query.size() - N + 1; ++i) {
-      // if (query.substr(i, N)[1] == 32) continue;
-      auto ix = ConvertNGramToIx(query.substr(i, N));
+    bool is_first = true;
+    for (auto& ix : trigrams) {
       container_type& docs = GetContainerAt(ix);
-      if (i == 0) {
+      if (is_first) {
+        is_first = false;
         // for the first n-gram, we just copy the docs into remaining_docs
         // copy the docs into remaining docs
         remaining_docs = {docs.begin(), docs.end()};

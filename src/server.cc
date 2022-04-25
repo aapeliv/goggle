@@ -58,6 +58,8 @@ int main() {
     res.set_content(ss.str(), "application/json; charset=utf-8");
   });
 
+  LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";
+
   LOG(INFO) << "Serving on 8080.";
 
   srv.listen("0.0.0.0", 8080);

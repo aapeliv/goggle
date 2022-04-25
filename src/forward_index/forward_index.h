@@ -23,4 +23,6 @@ class DocIndex {
   // retrieve doc from the index. note that the returned ref may be invalidated
   // if you add more docs after!
   const Document& GetDocument(docID_t id);
+
+  size_t DocumentCount();
 };

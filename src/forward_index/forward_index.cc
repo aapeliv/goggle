@@ -15,3 +15,7 @@ const Document& DocIndex::GetDocument(docID_t id) {
   CHECK(doc != data_.end()) << "given id not in DocIndex";
   return doc->second;
 }
+
+size_t DocIndex::DocumentCount() {
+  return data_.size();
+}
