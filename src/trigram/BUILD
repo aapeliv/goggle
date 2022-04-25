@@ -21,6 +21,7 @@ cc_test(
 
 cc_library(
     name = "trigram_splitter",
+    srcs = ["trigram_splitter.cc"],
     hdrs = ["trigram_splitter.h"],
     visibility = ["//visibility:public"],
     deps = [

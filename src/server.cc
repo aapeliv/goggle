@@ -39,10 +39,12 @@ int main() {
     std::stringstream ss{};
     bool is_first = true;
     ss << "{\"results\": [";
+    size_t count = 0;
     for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
+      ++count;
       auto doc = forward_ix.GetDocument(doc_id);
-      LOG(INFO) << "found possible doc: " << doc_id
-                << ", title = " << doc.get_title();
+      // LOG(INFO) << "found possible doc: " << doc_id
+      //           << ", title = " << doc.get_title();
       if (is_first) {
         is_first = false;
       } else {
@@ -51,11 +53,16 @@ int main() {
       ss << "{";
       ss << "\"id\": " << doc.get_id() << ",";
       ss << "\"title\": \"" << doc.get_title() << "\"";
+      // if (count == 1) {
+      //   ss << ",\"text\": \"" << doc.get_text() << "\"";
+      // }
       // ss << \"text\": " << doc.get_text();
       ss << "}";
     }
     ss << "]}";
     res.set_content(ss.str(), "application/json; charset=utf-8");
+    LOG(INFO) << "Matched " << count << " docs, i.e. "
+              << (double)100. * count / forward_ix.DocumentCount() << " %";
   });
 
   LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";

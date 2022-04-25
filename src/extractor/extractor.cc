@@ -160,10 +160,7 @@ void extract_dump(std::string index_filename, std::string dump_filename,
 
   auto chunks = extract_chunks_from_index_file(dump_sz, index_filename);
 
-  int debug_max_chunks = 200;
-
   for (auto& [start, end] : chunks) {
-    if (!(--debug_max_chunks)) break;
     // move input cursor to start of this stream
     dump.seekg(start);
     CHECK(dump.good()) << "Failed to seek";
