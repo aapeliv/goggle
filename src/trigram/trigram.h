@@ -23,6 +23,7 @@ todo:
 #include <ctype.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <string_view>
@@ -44,6 +45,7 @@ class NGramIndex {
   using container_type = std::vector<docID_t>;
 
  private:
+  bool ready_for_queries_ = false;
   constexpr static size_t ngram_count = pow_al(N);
   std::unique_ptr<std::array<container_type, ngram_count>> data_;
 
@@ -66,12 +68,29 @@ class NGramIndex {
     }
   }
 
+  void PrepareForQueries() {
+    for (auto& c : *data_) {
+      std::sort(c.begin(), c.end());
+    }
+    ready_for_queries_ = true;
+  }
+
   /*
   Retrieve documents from the index using a query string, note that this may
   (with low probability) return also documents that don't match the query.
   */
   container_type FindPossibleDocuments(const std::string_view& query) {
-    auto trigrams = split_into_trigrams(query);
+    CHECK(ready_for_queries_);
+    auto trigrams_set = split_into_trigrams(query);
+    std::vector<trigram_ix_t> trigrams{trigrams_set.begin(),
+                                       trigrams_set.end()};
+    std::sort(trigrams.begin(), trigrams.end(),
+              [&](trigram_ix_t a, trigram_ix_t b) {
+                // from cppref:
+                // returns ​true if the first argument is less than (i.e. is
+                // ordered before) the second
+                return GetContainerAt(a).size() < GetContainerAt(b).size();
+              });
     container_type remaining_docs{};
     bool is_first = true;
     for (auto& ix : trigrams) {

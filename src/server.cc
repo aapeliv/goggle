@@ -24,6 +24,8 @@ int main() {
             Document(doc->get_id(), doc->get_title(), doc->get_text()));
       });
 
+  tri_ix.PrepareForQueries();
+
   httplib::Server srv;
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
     res.set_content("{\"msg\": \"hello world\"}",
@@ -39,30 +41,36 @@ int main() {
     std::stringstream ss{};
     bool is_first = true;
     ss << "{\"results\": [";
-    size_t count = 0;
+    size_t ix_matches = 0;
+    size_t real_matches = 0;
     for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
-      ++count;
       auto doc = forward_ix.GetDocument(doc_id);
-      // LOG(INFO) << "found possible doc: " << doc_id
-      //           << ", title = " << doc.get_title();
-      if (is_first) {
-        is_first = false;
-      } else {
-        ss << ",";
+      ++ix_matches;
+      if (doc.get_text().find(query) != std::string::npos) {
+        ++real_matches;
+        // LOG(INFO) << "found possible doc: " << doc_id
+        //           << ", title = " << doc.get_title();
+        if (is_first) {
+          is_first = false;
+        } else {
+          ss << ",";
+        }
+        ss << "{";
+        ss << "\"id\": " << doc.get_id() << ",";
+        ss << "\"title\": \"" << doc.get_title() << "\"";
+        if (real_matches == 1 && req.has_param("x")) {
+          ss << ",\"text\": \"" << doc.get_text() << "\"";
+        }
+        // ss << \"text\": " << doc.get_text();
+        ss << "}";
       }
-      ss << "{";
-      ss << "\"id\": " << doc.get_id() << ",";
-      ss << "\"title\": \"" << doc.get_title() << "\"";
-      // if (count == 1) {
-      //   ss << ",\"text\": \"" << doc.get_text() << "\"";
-      // }
-      // ss << \"text\": " << doc.get_text();
-      ss << "}";
     }
     ss << "]}";
     res.set_content(ss.str(), "application/json; charset=utf-8");
-    LOG(INFO) << "Matched " << count << " docs, i.e. "
-              << (double)100. * count / forward_ix.DocumentCount() << " %";
+    LOG(INFO) << "Matched " << ix_matches << " docs using index, i.e. "
+              << (double)100. * ix_matches / forward_ix.DocumentCount() << " %";
+    LOG(INFO) << "Real matches: " << real_matches << ", i.e. "
+              << (double)100. * real_matches / ix_matches << " % of ix matches";
   });
 
   LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";

@@ -43,12 +43,19 @@ string strip_text(const string s) {
 
 string remove_nonalphabetical(string s) {
   int j = 0;
+  bool last_skipped = false;
   for (int i = 0; i < s.size(); i++) {
     // Store only valid characters
-    if ((s[i] >= 'A' && s[i] <= 'Z') || (isspace(s[i])) ||
-        (s[i] >= 'a' && s[i] <= 'z')) {
-      s[j] = s[i];
+    if ((s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= 'a' && s[i] <= 'z')) {
+      s[j] = std::tolower(s[i]);
       j++;
+      last_skipped = false;
+    } else {
+      if (!last_skipped) {
+        s[j] = ' ';
+        j++;
+      }
+      last_skipped = true;
     }
   }
   return s.substr(0, j);
