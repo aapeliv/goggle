@@ -8,18 +8,19 @@
 #include <regex>
 #include <string>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "glog/logging.h"
 #include "src/doc.h"
 #include "third_party/bzip2/bzlib.h"
 #include "third_party/rapidxml/rapidxml.hpp"
 
-using std::string;
-using std::vector;
-typedef std::chrono::high_resolution_clock hrc;
-typedef std::chrono::milliseconds ms;
+using hrc = std::chrono::high_resolution_clock;
+using ms = std::chrono::milliseconds;
 
-string strip_text(const string s) {
-  string copy;
+std::string strip_text(const std::string s) {
+  std::string copy;
 
   std::regex rgx(".*<text.*>(.*)</text>.*");
   std::smatch match;
@@ -42,30 +43,23 @@ string strip_text(const string s) {
   return copy;
 }
 
-vector<string> extract_links(string s)
-{
-  // links = vector<string>; 
-  vector<string> links; 
-  int i = 0; 
-  while (i < s.size())
-  {
-    if (s[i] == '[' && s[i+1] == '[')
-    {
-      int j = i+2; 
-      while (s[j] != '|' && s[j] != ']')
-        j++; 
-      links.push_back(s.substr(i+2, j-(i+2))); 
-      i = j; 
-    } else 
-    {
-      i++; 
+absl::flat_hash_set<std::string> extract_links(std::string s) {
+  absl::flat_hash_set<std::string> links;
+  int i = 0;
+  while (i < s.size()) {
+    if (s[i] == '[' && s[i + 1] == '[') {
+      int j = i + 2;
+      while (s[j] != '|' && s[j] != ']') j++;
+      links.insert(s.substr(i + 2, j - (i + 2)));
+      i = j;
+    } else {
+      i++;
     }
   }
-  return links; 
+  return links;
 }
 
-string remove_nonalphabetical(string s) 
-{
+std::string remove_nonalphabetical(std::string s) {
   int j = 0;
   bool last_skipped = false;
   for (int i = 0; i < s.size(); i++) {
@@ -85,13 +79,16 @@ string remove_nonalphabetical(string s)
   return s.substr(0, j);
 }
 
-std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
+std::unique_ptr<Document> ParseXml(
+    absl::flat_hash_map<std::string, std::vector<std::string>>& backlinks,
+    rapidxml::xml_node<>* page_node) {
   // expect all children to just be pages
   CHECK(std::string(page_node->name()) == "page");
 
   uint32_t id = 0;
   std::string title{};
   std::string text{};
+  absl::flat_hash_set<std::string> links{};
   bool is_redirect = false;
   for (auto child_node = page_node->first_node(); child_node != nullptr;
        child_node = child_node->next_sibling()) {
@@ -103,9 +100,9 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
     } else if (name == "revision") {
       // further child` node
       text = child_node->first_node("text")->value();
-      vector<string> links = extract_links(text); // everything between [[ ]] and [[ | ]]
+      links = extract_links(text);  // everything between [[ ]] and [[ | ]]
       // for (auto link : links)
-      //   std::cout << link << "\n"; 
+      //   std::cout << link << "\n";
       text = remove_nonalphabetical(text);
     } else if (name == "redirect") {
       is_redirect = true;
@@ -120,6 +117,10 @@ std::unique_ptr<Document> ParseXml(rapidxml::xml_node<>* page_node) {
     LOG(WARNING) << "Incomplete page: id=" << id << ", title=" << title;
     return nullptr;
   } else {
+    for (auto&& link : links) {
+      backlinks[link].push_back(title);
+    }
+
     // LOG(INFO) << "Found page; id=" << id << ", title=" << title << ", text
     // length=" << text.size();
     return std::make_unique<Document>(id, title, text);
@@ -193,6 +194,9 @@ void extract_dump(std::string index_filename, std::string dump_filename,
 
   auto chunks = extract_chunks_from_index_file(dump_sz, index_filename);
 
+  // key: link to, value: list of pages that link here
+  absl::flat_hash_map<std::string, std::vector<std::string>> backlinks{};
+
   for (auto& [start, end] : chunks) {
     // move input cursor to start of this stream
     dump.seekg(start);
@@ -236,7 +240,7 @@ void extract_dump(std::string index_filename, std::string dump_filename,
     for (auto page_node = xml.first_node(); page_node != nullptr;
          page_node = page_node->next_sibling()) {
       t0 = hrc::now();
-      auto doc = ParseXml(page_node);
+      auto doc = ParseXml(backlinks, page_node);
       t1 = hrc::now();
       if (doc != nullptr) {
         // t0 = hrc::now();
@@ -251,8 +255,16 @@ void extract_dump(std::string index_filename, std::string dump_filename,
     LOG(INFO) << "chunk: " << start << " to " << end << ", at "
               << 100. * (double)end / dump_sz << "%, ratio was "
               << dlen_out / (1. * len);
-    LOG(INFO) << "text processing time: " << total_time.count() << " ms\n";
+    LOG(INFO) << "total text processing time: " << total_time.count()
+              << " ms\n";
   }
+
+  // for (auto&& [target, links] : backlinks) {
+  //   LOG(INFO) << "Backlinks for \"" << target << "\"";
+  //   for (auto&& link : links) {
+  //     LOG(INFO) << " link: \"" << link << "\"";
+  //   }
+  // }
 
   dump.close();
   CHECK(dump.good()) << "Failed to close";
