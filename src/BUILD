@@ -39,3 +39,13 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_binary(
+    name = "leveldb_test",
+    srcs = ["leveldb_test.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@com_github_google_leveldb//:leveldb",
+    ],
+)

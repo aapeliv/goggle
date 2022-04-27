@@ -36,10 +36,10 @@ int main() {
         forward_ix.AddDocument(
             Document(N, doc->get_title(), doc->get_text(), doc->get_links()));
         ids[doc->get_title()] = N;
+        out_link_count.push_back(doc->get_links().size());
         ++N;
       });
 
-  LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";
   LOG(INFO) << "Have " << N << " docs";
 
   // ** Pagerank computation
@@ -96,7 +96,6 @@ int main() {
     total_page_goodness += goodness;
   }
 
-  // todo: stopping condition
   for (int i = 0; i < 50; ++i) {
     double diff = 0.;
     auto new_pagerank = std::make_unique<std::vector<float>>(N);
@@ -104,8 +103,7 @@ int main() {
       double new_pr = (1 - d) / N * (*page_goodness)[n] / total_page_goodness;
       // grab backlinks
       for (auto& link_id : backlinks_ids[n]) {
-        new_pr += (*pagerank)[link_id] /
-                  forward_ix.GetDocument(link_id).get_links().size();
+        new_pr += (*pagerank)[link_id] / out_link_count[link_id];
       }
       (*new_pagerank)[n] = new_pr;
       diff += std::abs(new_pr - (*pagerank)[n]);
@@ -208,12 +206,10 @@ int main() {
                         .count();
     LOG(INFO) << "Searched for \"" << query << "\"";
     LOG(INFO) << "Matched " << ix_matches << " docs using index, i.e. "
-              << (double)100. * ix_matches / forward_ix.DocumentCount() << " %";
+              << (double)100. * ix_matches / N << " %";
     LOG(INFO) << "Real matches: " << real_matches << ", i.e. "
               << (double)100. * real_matches / ix_matches << " % of ix matches";
-    LOG(INFO) << "Total matched "
-              << (double)100. * real_matches / forward_ix.DocumentCount()
-              << " %";
+    LOG(INFO) << "Total matched " << (double)100. * real_matches / N << " %";
     LOG(INFO) << "Took " << std::to_string(duration) << " ms";
   });
 

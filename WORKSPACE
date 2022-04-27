@@ -65,3 +65,41 @@ http_archive(
     strip_prefix = "benchmark-7cb2914292886a1c2625faf5cc84743d1855d21b",
     urls = ["https://github.com/google/benchmark/archive/7cb2914292886a1c2625faf5cc84743d1855d21b.zip"],
 )
+
+# foreign cc rules
+
+http_archive(
+    name = "rules_foreign_cc",
+    sha256 = "1acd90dbc3c22b4dff24fc666aa6aa4b2d1ea75806c42d641b902aba6920303b",
+    strip_prefix = "rules_foreign_cc-f54068e889417d7d90fc0d171b8c44d4e1697785",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/f54068e889417d7d90fc0d171b8c44d4e1697785.zip",
+)
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies()
+
+# leveldb
+
+http_archive(
+    name = "com_github_google_leveldb",
+    build_file = "//:third_party/leveldb.BUILD",
+    sha256 = "94c424e4de3271741eee932d6c7eb1b6382bab5602935d384f2eae82edc57836",
+    strip_prefix = "leveldb-4fb146810cd265ffefa7f9905c016ae965ad36c8",
+    urls = ["https://github.com/google/leveldb/archive/4fb146810cd265ffefa7f9905c016ae965ad36c8.zip"],
+)
+
+# protobuf
+
+http_archive(
+    name = "rules_proto",
+    sha256 = "857efa238d7952ba503620d68e39869e9ced90e41d013e6b61da398503f38e08",
+    strip_prefix = "rules_proto-3212323502e21b819ac4fbdd455cb227ad0f6394",
+    urls = ["https://github.com/bazelbuild/rules_proto/archive/3212323502e21b819ac4fbdd455cb227ad0f6394.zip"],
+)
+
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
+
+rules_proto_dependencies()
+
+rules_proto_toolchains()
