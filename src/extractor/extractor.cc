@@ -123,7 +123,8 @@ std::unique_ptr<Document> ParseXml(
 
     // LOG(INFO) << "Found page; id=" << id << ", title=" << title << ", text
     // length=" << text.size();
-    return std::make_unique<Document>(id, title, text);
+    return std::make_unique<Document>(
+        id, title, text, std::vector<std::string>{links.begin(), links.end()});
   }
 }
 
@@ -179,8 +180,10 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
   return chunks;
 }
 
-void extract_dump(std::string index_filename, std::string dump_filename,
-                  std::function<void(std::unique_ptr<Document>)> process_doc) {
+// returns backlinks map
+absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
+    std::string index_filename, std::string dump_filename,
+    std::function<void(std::unique_ptr<Document>)> process_doc) {
   std::ifstream dump(dump_filename);
 
   auto t0 = hrc::now();
@@ -259,13 +262,7 @@ void extract_dump(std::string index_filename, std::string dump_filename,
               << " ms\n";
   }
 
-  // for (auto&& [target, links] : backlinks) {
-  //   LOG(INFO) << "Backlinks for \"" << target << "\"";
-  //   for (auto&& link : links) {
-  //     LOG(INFO) << " link: \"" << link << "\"";
-  //   }
-  // }
-
   dump.close();
   CHECK(dump.good()) << "Failed to close";
+  return backlinks;
 }

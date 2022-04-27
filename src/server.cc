@@ -1,6 +1,7 @@
 #include <chrono>
 #include <memory>
 
+#include "absl/container/flat_hash_map.h"
 #include "glog/logging.h"
 #include "httplib.h"
 #include "src/doc.h"
@@ -16,18 +17,79 @@ int main() {
   DocIndex forward_ix{};
   TrigramIndex tri_ix{};
 
-  extract_dump(
+  // assign each doc an ID
+  int N = 0;
+  // title -> id
+  absl::flat_hash_map<std::string, int> ids{};
+  std::vector<int> out_link_count{};
+
+  auto backlinks = extract_dump(
       "data/"
       "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2",
       "data/"
       "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
       [&](std::unique_ptr<Document> doc) {
-        tri_ix.AddDocument(doc->get_id(), doc->get_text());
+        tri_ix.AddDocument(N, doc->get_text());
+        // TODO
         forward_ix.AddDocument(
-            Document(doc->get_id(), doc->get_title(), doc->get_text()));
+            Document(N, doc->get_title(), doc->get_text(), doc->get_links()));
+        ids[doc->get_title()] = N;
+        ++N;
       });
 
-  tri_ix.PrepareForQueries();
+  LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";
+  LOG(INFO) << "Have " << N << " docs";
+
+  // ** Pagerank computation
+  LOG(INFO) << "About to compute PageRank";
+
+  // turn backlinks map into ids map
+  absl::flat_hash_map<int, std::vector<int>> backlinks_ids{};
+
+  for (auto&& [target, links] : backlinks) {
+    if (ids.contains(target)) {
+      std::vector<int> link_ids{};
+      for (auto&& link : links) {
+        if (ids.contains(link)) {
+          link_ids.push_back(ids[link]);
+        }
+      }
+      backlinks_ids.try_emplace(ids[target], link_ids);
+    }
+  }
+
+  // note use of 4-byte floats
+  // dampening factor
+  float d = 0.85;
+
+  // intialize page rank, set to uniform dist
+  auto pagerank = std::make_unique<std::vector<float>>(N);
+  for (auto& pr : *pagerank) {
+    pr = 1 / N;
+  }
+
+  // todo: stopping condition
+  for (int i = 0; i < 50; ++i) {
+    double diff = 0.;
+    auto new_pagerank = std::make_unique<std::vector<float>>(N);
+    for (int n = 0; n < N; ++n) {
+      float new_pr = (1 - d) / N;
+      const auto& links = backlinks_ids[n];
+      // grab backlinks
+      for (auto& link_id : backlinks_ids[n]) {
+        new_pr += (*pagerank)[link_id] /
+                  forward_ix.GetDocument(link_id).get_links().size();
+      }
+      (*new_pagerank)[n] = new_pr;
+      diff += std::abs(new_pr - (*pagerank)[n]);
+    }
+    LOG(INFO) << "iterated, diff = " << diff;
+    pagerank = std::move(new_pagerank);
+  }
+
+  LOG(INFO) << "Done computing PageRank";
+
+  tri_ix.PrepareForQueries(pagerank);
 
   httplib::Server srv;
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -90,8 +152,6 @@ int main() {
               << " %";
     LOG(INFO) << "Took " << std::to_string(duration) << " ms";
   });
-
-  LOG(INFO) << "Have " << forward_ix.DocumentCount() << " docs";
 
   LOG(INFO) << "Serving on 8080.";
 

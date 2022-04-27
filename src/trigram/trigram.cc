@@ -1,6 +1,7 @@
 #include "src/trigram/trigram.h"
 
 #include <array>
+#include <memory>
 #include <string_view>
 
 #include "src/common.h"
@@ -21,9 +22,12 @@ void TrigramIndex::AddDocument(docID_t doc_id, const std::string_view& text) {
   }
 }
 
-void TrigramIndex::PrepareForQueries() {
+void TrigramIndex::PrepareForQueries(
+    const std::unique_ptr<std::vector<float>>& importance) {
   for (auto& c : *data_) {
-    std::sort(c.begin(), c.end());
+    std::sort(c.begin(), c.end(), [&](auto a, auto b) {
+      return (*importance)[a] > (*importance)[b];
+    });
     c.shrink_to_fit();
   }
   ready_for_queries_ = true;

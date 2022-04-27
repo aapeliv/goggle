@@ -50,6 +50,6 @@ class TrigramIndex {
  public:
   TrigramIndex();
   void AddDocument(docID_t doc_id, const std::string_view& text);
-  void PrepareForQueries();
+  void PrepareForQueries(const std::unique_ptr<std::vector<float>>& importance);
   container_type FindPossibleDocuments(const std::string_view& query);
 };

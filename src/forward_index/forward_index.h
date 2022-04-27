@@ -17,6 +17,10 @@ class DocIndex {
   // ctor
   DocIndex();
 
+  const absl::flat_hash_map<docID_t, Document>& GetData() {
+    return data_;
+  }
+
   // add a doc into the index
   void AddDocument(Document&& doc);
 
