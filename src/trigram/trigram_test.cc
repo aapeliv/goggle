@@ -11,19 +11,27 @@ using ::testing::UnorderedElementsAre;
 TEST(TrigramIndex, Basic) {
   TrigramIndex ix{};
   // add some documents
-  ix.AddDocument(1, "hello this is a test");
-  ix.AddDocument(2, "hello world");
-  ix.AddDocument(3, "what a funky document hey");
-  ix.AddDocument(4, "the world looks fun from space");
+  ix.AddDocument(0, "hello this is a test");
+  ix.AddDocument(1, "hello world");
+  ix.AddDocument(2, "what a funky document hey");
+  ix.AddDocument(3, "the world looks fun from space");
 
-  EXPECT_THAT(ix.FindPossibleDocuments("hello"), UnorderedElementsAre(1, 2));
+  auto importance = std::make_unique<std::vector<float>>(4);
+  (*importance)[0] = 1.0f;
+  (*importance)[1] = 0.9f;
+  (*importance)[2] = 0.8f;
+  (*importance)[3] = 0.7f;
+
+  ix.PrepareForQueries(importance);
+
+  EXPECT_THAT(ix.FindPossibleDocuments("hello"), UnorderedElementsAre(0, 1));
 
   LOG(INFO) << "Searching for 'hello'";
   for (auto&& doc_id : ix.FindPossibleDocuments("hello")) {
     LOG(INFO) << "Found docID: " << doc_id;
   }
 
-  EXPECT_THAT(ix.FindPossibleDocuments("world"), UnorderedElementsAre(2, 4));
+  EXPECT_THAT(ix.FindPossibleDocuments("world"), UnorderedElementsAre(1, 3));
 
   LOG(INFO) << "Searching for 'world'";
   for (auto&& doc_id : ix.FindPossibleDocuments("world")) {

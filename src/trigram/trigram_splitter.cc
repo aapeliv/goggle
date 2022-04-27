@@ -41,10 +41,8 @@ absl::flat_hash_set<trigram_ix_t> split_into_trigrams(
     t1 = t2;
     t2 = t3;
     t3 = char_to_number(text[i]);
-    if (t2 != 0) {
-      out.insert(triplet_to_ix(t1, t2, t3));
-    } else {
-      out.insert(triplet_to_ix(t1, t2, t3));
+    out.insert(triplet_to_ix(t1, t2, t3));
+    if (t2 == 0) {
       // space in the middle
       out.insert(triplet_to_ix(t1, 0, 0));
       out.insert(triplet_to_ix(0, 0, t3));
