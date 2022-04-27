@@ -16,6 +16,7 @@ int main() {
 
   DocIndex forward_ix{};
   TrigramIndex tri_ix{};
+  TrigramIndex title_tri_ix{};
 
   // assign each doc an ID
   int N = 0;
@@ -30,6 +31,7 @@ int main() {
       "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
       [&](std::unique_ptr<Document> doc) {
         tri_ix.AddDocument(N, doc->get_text());
+        title_tri_ix.AddDocument(N, doc->get_title());
         // TODO
         forward_ix.AddDocument(
             Document(N, doc->get_title(), doc->get_text(), doc->get_links()));
@@ -60,7 +62,7 @@ int main() {
 
   // note use of 4-byte floats
   // dampening factor
-  float d = 0.85;
+  float d = 0.7;
 
   // intialize page rank, set to uniform dist
   auto pagerank = std::make_unique<std::vector<float>>(N);
@@ -68,13 +70,38 @@ int main() {
     pr = 1 / N;
   }
 
+  // manual ranking
+  auto page_goodness = std::make_unique<std::vector<float>>(N);
+  double total_page_goodness = 0.;
+  // add in some manual page goodness
+  for (int n = 0; n < N; ++n) {
+    auto doc = forward_ix.GetDocument(n);
+    // outgoing links
+    int link_count = doc.get_links().size();
+    int link_chars = 0;
+    for (auto&& l : doc.get_links()) {
+      link_chars += l.size();
+    }
+    // page size, and subtract roughly link size
+    int page_chars = doc.get_text().size();
+    // > ~5k words
+    bool is_very_long = (page_chars - link_chars) > 25'000;
+    // < ~500 words
+    bool is_short = (page_chars - link_chars) > 2'500;
+    bool link_page = (double)page_chars / link_count < 90.;
+    bool has_few_links = link_count < 10;
+    double goodness = 10 + 2 * (is_very_long * (1 - link_page)) - 2 * is_short -
+                      8 * link_page - 1 * has_few_links;
+    (*page_goodness)[n] = goodness;
+    total_page_goodness += goodness;
+  }
+
   // todo: stopping condition
   for (int i = 0; i < 50; ++i) {
     double diff = 0.;
     auto new_pagerank = std::make_unique<std::vector<float>>(N);
     for (int n = 0; n < N; ++n) {
-      float new_pr = (1 - d) / N;
-      const auto& links = backlinks_ids[n];
+      double new_pr = (1 - d) / N * (*page_goodness)[n] / total_page_goodness;
       // grab backlinks
       for (auto& link_id : backlinks_ids[n]) {
         new_pr += (*pagerank)[link_id] /
@@ -85,11 +112,15 @@ int main() {
     }
     LOG(INFO) << "iterated, diff = " << diff;
     pagerank = std::move(new_pagerank);
+    if (diff < 1e-6) break;
   }
 
   LOG(INFO) << "Done computing PageRank";
+  LOG(INFO) << "Sorting indexes";
 
   tri_ix.PrepareForQueries(pagerank);
+  title_tri_ix.PrepareForQueries(pagerank);
+  LOG(INFO) << "Done sorting indexes";
 
   httplib::Server srv;
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -113,8 +144,39 @@ int main() {
     ss << "{\"results\": [";
     size_t ix_matches = 0;
     size_t real_matches = 0;
+    absl::flat_hash_set<int> found{};
+    for (auto&& doc_id : title_tri_ix.FindPossibleDocuments(query)) {
+      if (limit == 0) break;
+      auto doc = forward_ix.GetDocument(doc_id);
+      ++ix_matches;
+      auto lower_title{doc.get_title()};
+      std::transform(lower_title.begin(), lower_title.end(),
+                     lower_title.begin(),
+                     [](auto c) { return std::tolower(c); });
+      if (lower_title.find(query) != std::string::npos) {
+        --limit;
+        ++real_matches;
+        if (is_first) {
+          is_first = false;
+        } else {
+          ss << ",";
+        }
+        ss << "{";
+        ss << "\"id\": " << doc_id << ",";
+        ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
+        ss << "\"is_title_match\": true,";
+        ss << "\"title\": \"" << doc.get_title() << "\"";
+        if (real_matches == 1 && req.has_param("x")) {
+          ss << ",\"text\": \"" << doc.get_text() << "\"";
+        }
+        // ss << \"text\": " << doc.get_text();
+        ss << "}";
+        found.insert(doc_id);
+      }
+    }
     for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
       if (limit == 0) break;
+      if (found.contains(doc_id)) continue;
       auto doc = forward_ix.GetDocument(doc_id);
       ++ix_matches;
       if (doc.get_text().find(query) != std::string::npos) {
@@ -128,7 +190,9 @@ int main() {
           ss << ",";
         }
         ss << "{";
-        ss << "\"id\": " << doc.get_id() << ",";
+        ss << "\"id\": " << doc_id << ",";
+        ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
+        ss << "\"is_title_match\": false,";
         ss << "\"title\": \"" << doc.get_title() << "\"";
         if (real_matches == 1 && req.has_param("x")) {
           ss << ",\"text\": \"" << doc.get_text() << "\"";
