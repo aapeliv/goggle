@@ -5,6 +5,7 @@
 #include "glog/logging.h"
 #include "httplib.h"
 #include "src/doc.h"
+#include "src/escape_json.h"
 #include "src/extractor/extractor.h"
 #include "src/forward_index/forward_index.h"
 #include "src/trigram/trigram.h"
@@ -121,7 +122,7 @@ int main(int argc, char* argv[]) {
     }
     LOG(INFO) << "iterated, diff = " << diff;
     pagerank = std::move(new_pagerank);
-    if (diff < 1e-6) break;
+    if (diff < 1e-9) break;
   }
 
   LOG(INFO) << "Done computing PageRank";
@@ -129,6 +130,9 @@ int main(int argc, char* argv[]) {
 
   tri_ix.PrepareForQueries(pagerank);
   title_tri_ix.PrepareForQueries(pagerank);
+
+  tri_ix.SaveToDB();
+  title_tri_ix.SaveToDB();
 
   LOG(INFO) << "Done sorting indexes";
 
@@ -203,9 +207,9 @@ int main(int argc, char* argv[]) {
         ss << "\"id\": " << doc_id << ",";
         ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
         ss << "\"is_title_match\": false,";
-        ss << "\"title\": \"" << doc.get_title() << "\"";
+        ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
         if (real_matches == 1 && req.has_param("x")) {
-          ss << ",\"text\": \"" << doc.get_text() << "\"";
+          ss << ",\"text\": \"" << escape_json(doc.get_text()) << "\"";
         }
         // ss << \"text\": " << doc.get_text();
         ss << "}";

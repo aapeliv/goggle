@@ -9,6 +9,7 @@ cc_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":doc",
+        ":escape_json",
         "//src/extractor",
         "//src/forward_index",
         "//src/trigram",
@@ -33,4 +34,10 @@ cc_test(
         ":doc",
         "@com_google_googletest//:gtest_main",
     ],
+)
+
+cc_library(
+    name = "escape_json",
+    hdrs = ["escape_json.h"],
+    visibility = ["//visibility:public"],
 )
