@@ -5,17 +5,8 @@
 #include "leveldb/db.h"
 #include "src/forward_index/doc.pb.h"
 
-DocIndex::DocIndex() {
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  leveldb::Options options;
-  options.create_if_missing = true;
-  leveldb::Status status = leveldb::DB::Open(options, "goggle_db", &data_);
-  CHECK(status.ok()) << "Failed to open leveldb";
-}
-
-DocIndex::~DocIndex() {
-  delete data_;
+DocIndex::DocIndex(leveldb::DB* db) {
+  data_ = db;
 }
 
 void DocIndex::AddDocument(const Document& doc) {
@@ -25,7 +16,8 @@ void DocIndex::AddDocument(const Document& doc) {
   proto_doc.set_title(doc.get_title());
   proto_doc.set_text(doc.get_text());
   *proto_doc.mutable_links() = {doc.get_links().begin(), doc.get_links().end()};
-  auto s = data_->Put(leveldb::WriteOptions(), std::to_string(doc.get_id()),
+  auto s = data_->Put(leveldb::WriteOptions(),
+                      "docs/" + std::to_string(doc.get_id()),
                       proto_doc.SerializeAsString());
   CHECK(s.ok()) << "Failed to write doc";
 }
@@ -38,14 +30,16 @@ void DocIndex::AddDocument(Document* doc) {
   proto_doc.set_text(doc->get_text());
   *proto_doc.mutable_links() = {doc->get_links().begin(),
                                 doc->get_links().end()};
-  auto s = data_->Put(leveldb::WriteOptions(), std::to_string(doc->get_id()),
+  auto s = data_->Put(leveldb::WriteOptions(),
+                      "docs/" + std::to_string(doc->get_id()),
                       proto_doc.SerializeAsString());
   CHECK(s.ok()) << "Failed to write doc";
 }
 
-Document DocIndex::GetDocument(docID_t id) {
+Document DocIndex::GetDocument(uint32_t id) {
   std::string out;
-  auto s = data_->Get(leveldb::ReadOptions(), std::to_string(id), &out);
+  auto s =
+      data_->Get(leveldb::ReadOptions(), "docs/" + std::to_string(id), &out);
   CHECK(s.ok()) << "Failed to read doc";
   goggle::Doc proto_doc{};
   proto_doc.ParseFromString(out);

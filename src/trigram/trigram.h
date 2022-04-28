@@ -26,21 +26,24 @@ todo:
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "glog/logging.h"
-#include "src/common.h"
+#include "leveldb/db.h"
 #include "src/trigram/trigram_splitter.h"
 
 // Provides facilities for an n-gram based index
 class TrigramIndex {
  public:
-  using container_type = std::vector<docID_t>;
+  using container_type = std::vector<uint32_t>;
 
  private:
   bool ready_for_queries_ = false;
   std::unique_ptr<std::array<container_type, ngram_count>> data_;
+  std::string name_;
+  leveldb::DB* db_;
 
   /*
   This is a bit annoying to do repeatedly, so here's a helper.
@@ -48,8 +51,10 @@ class TrigramIndex {
   container_type& GetContainerAt(size_t ix);
 
  public:
-  TrigramIndex();
-  void AddDocument(docID_t doc_id, const std::string_view& text);
+  TrigramIndex(std::string name, leveldb::DB* db);
+  void LoadFromDB();
+  void SaveToDB();
+  void AddDocument(uint32_t doc_id, const std::string_view& text);
   void PrepareForQueries(const std::unique_ptr<std::vector<float>>& importance);
   container_type FindPossibleDocuments(const std::string_view& query);
 };

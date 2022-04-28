@@ -11,33 +11,69 @@
 
 using clk = std::chrono::steady_clock;
 
-int main() {
+int main(int argc, char* argv[]) {
+  // google::InitGoogleLogging(argv[0]);
+  // GOOGLE_PROTOBUF_VERIFY_VERSION;
+
   LOG(INFO) << "Starting The Wikipedia Goggle.";
 
-  DocIndex forward_ix{};
-  TrigramIndex tri_ix{};
-  TrigramIndex title_tri_ix{};
+  leveldb::DB* db;
+  leveldb::Options options;
+  options.create_if_missing = true;
+  leveldb::Status status = leveldb::DB::Open(options, "goggle_db", &db);
+  CHECK(status.ok()) << "Failed to open leveldb";
+
+  DocIndex forward_ix{db};
+  TrigramIndex tri_ix{"text", db};
+  TrigramIndex title_tri_ix{"titles", db};
 
   // assign each doc an ID
   int N = 0;
   // title -> id
   absl::flat_hash_map<std::string, int> ids{};
   std::vector<int> out_link_count{};
+  std::vector<float> page_goodness{};
+  double total_page_goodness = 0.;
 
   auto backlinks = extract_dump(
       "data/"
-      "enwiki-20220420-pages-articles-multistream-index.txt",
+      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
       "data/"
-      "enwiki-20220420-pages-articles-multistream.xml.bz2",
+      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+      // "data/"
+      // "enwiki-20220420-pages-articles-multistream-index.txt",
+      // "data/"
+      // "enwiki-20220420-pages-articles-multistream.xml.bz2",
       [&](std::unique_ptr<Document> doc) {
+        doc->set_id(N);
         tri_ix.AddDocument(N, doc->get_text());
         title_tri_ix.AddDocument(N, doc->get_title());
         // TODO
-        forward_ix.AddDocument(Document(N, doc->get_id(), doc->get_title(),
-                                        doc->get_text(), doc->get_links()));
+        forward_ix.AddDocument(doc.get());
         ids[doc->get_title()] = N;
         out_link_count.push_back(doc->get_links().size());
         ++N;
+
+        // add in some manual page goodness
+        // outgoing links
+        int link_count = doc->get_links().size();
+        int link_chars = 0;
+        for (auto&& l : doc->get_links()) {
+          link_chars += l.size();
+        }
+        // page size, and subtract roughly link size
+        int page_chars = doc->get_text().size();
+        // > ~5k words
+        bool is_very_long = (page_chars - link_chars) > 25'000;
+        // < ~500 words
+        bool is_short = (page_chars - link_chars) > 2'500;
+        bool link_page = (double)page_chars / link_count < 90.;
+        bool has_few_links = link_count < 10;
+        double goodness = 10 + 2 * (is_very_long * (1 - link_page)) -
+                          2 * is_short - 8 * link_page - 1 * has_few_links;
+        page_goodness.push_back(goodness);
+        total_page_goodness += goodness;
+        // end manual ranking
       },
       true);
 
@@ -63,7 +99,7 @@ int main() {
 
   // note use of 4-byte floats
   // dampening factor
-  float d = 0.7;
+  double d = 0.7;
 
   // intialize page rank, set to uniform dist
   auto pagerank = std::make_unique<std::vector<float>>(N);
@@ -71,40 +107,14 @@ int main() {
     pr = 1 / N;
   }
 
-  // manual ranking
-  auto page_goodness = std::make_unique<std::vector<float>>(N);
-  double total_page_goodness = 0.;
-  // add in some manual page goodness
-  for (int n = 0; n < N; ++n) {
-    auto doc = forward_ix.GetDocument(n);
-    // outgoing links
-    int link_count = doc.get_links().size();
-    int link_chars = 0;
-    for (auto&& l : doc.get_links()) {
-      link_chars += l.size();
-    }
-    // page size, and subtract roughly link size
-    int page_chars = doc.get_text().size();
-    // > ~5k words
-    bool is_very_long = (page_chars - link_chars) > 25'000;
-    // < ~500 words
-    bool is_short = (page_chars - link_chars) > 2'500;
-    bool link_page = (double)page_chars / link_count < 90.;
-    bool has_few_links = link_count < 10;
-    double goodness = 10 + 2 * (is_very_long * (1 - link_page)) - 2 * is_short -
-                      8 * link_page - 1 * has_few_links;
-    (*page_goodness)[n] = goodness;
-    total_page_goodness += goodness;
-  }
-
   for (int i = 0; i < 50; ++i) {
     double diff = 0.;
     auto new_pagerank = std::make_unique<std::vector<float>>(N);
     for (int n = 0; n < N; ++n) {
-      double new_pr = (1 - d) / N * (*page_goodness)[n] / total_page_goodness;
+      double new_pr = (1 - d) / N * page_goodness[n] / total_page_goodness;
       // grab backlinks
       for (auto& link_id : backlinks_ids[n]) {
-        new_pr += (*pagerank)[link_id] / out_link_count[link_id];
+        new_pr += d * (*pagerank)[link_id] / out_link_count[link_id];
       }
       (*new_pagerank)[n] = new_pr;
       diff += std::abs(new_pr - (*pagerank)[n]);
@@ -119,6 +129,7 @@ int main() {
 
   tri_ix.PrepareForQueries(pagerank);
   title_tri_ix.PrepareForQueries(pagerank);
+
   LOG(INFO) << "Done sorting indexes";
 
   httplib::Server srv;

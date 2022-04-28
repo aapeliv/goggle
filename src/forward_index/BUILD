@@ -17,7 +17,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":doc_proto_cc",
-        "//src:common",
         "//src:doc",
         "@com_github_google_glog//:glog",
         "@com_github_google_leveldb//:leveldb",

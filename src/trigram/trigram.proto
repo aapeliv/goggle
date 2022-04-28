@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package goggle;
+
+message TrigramVec {
+  repeated uint32 docs = 1;
+}

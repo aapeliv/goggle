@@ -4,19 +4,48 @@
 #include <memory>
 #include <string_view>
 
-#include "src/common.h"
+#include "leveldb/db.h"
+#include "src/trigram/trigram.pb.h"
 
 TrigramIndex::container_type& TrigramIndex::GetContainerAt(size_t ix) {
   return (data_.get())->at(ix);
 }
 
-TrigramIndex::TrigramIndex()
-    : data_(new std::array<container_type, ngram_count>) {}
+TrigramIndex::TrigramIndex(std::string name, leveldb::DB* db)
+    : data_(new std::array<container_type, ngram_count>),
+      name_(name),
+      db_(db) {}
+
+void TrigramIndex::LoadFromDB() {
+  for (int ix = 0; ix < ngram_count; ++ix) {
+    auto c = (data_.get())->at(ix);
+    std::string out;
+    auto s = db_->Get(leveldb::ReadOptions(),
+                      "trgm/" + name_ + "/" + std::to_string(ix), &out);
+    CHECK(s.ok()) << "Failed to read trigram";
+    goggle::TrigramVec vec{};
+    vec.ParseFromString(out);
+    c = {vec.docs().begin(), vec.docs().end()};
+  }
+  ready_for_queries_ = true;
+}
+
+void TrigramIndex::SaveToDB() {
+  for (int ix = 0; ix < ngram_count; ++ix) {
+    auto c = (data_.get())->at(ix);
+    goggle::TrigramVec vec{};
+    *vec.mutable_docs() = {c.begin(), c.end()};
+    auto s = db_->Put(leveldb::WriteOptions(),
+                      "trgm/" + name_ + "/" + std::to_string(ix),
+                      vec.SerializeAsString());
+    CHECK(s.ok()) << "Failed to write trigram";
+  }
+}
 
 /*
 Add a document to the index
 */
-void TrigramIndex::AddDocument(docID_t doc_id, const std::string_view& text) {
+void TrigramIndex::AddDocument(uint32_t doc_id, const std::string_view& text) {
   for (auto& ix : split_into_trigrams(text)) {
     GetContainerAt(ix).emplace_back(doc_id);
   }
@@ -63,7 +92,7 @@ TrigramIndex::container_type TrigramIndex::FindPossibleDocuments(
       // todo: this is a really dumb + slow algorithm
       auto it = remaining_docs.begin();
       while (it != remaining_docs.end()) {
-        docID_t doc_id = *it;
+        uint32_t doc_id = *it;
         // now search in new list
         bool found = false;
         for (auto&& new_doc_id : docs) {

@@ -1,12 +1,25 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "trigram_proto",
+    srcs = ["trigram.proto"],
+)
+
+cc_proto_library(
+    name = "trigram_proto_cc",
+    deps = [":trigram_proto"],
+)
+
 cc_library(
     name = "trigram",
     srcs = ["trigram.cc"],
     hdrs = ["trigram.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":trigram_proto_cc",
         ":trigram_splitter",
-        "//src:common",
         "@com_github_google_glog//:glog",
+        "@com_github_google_leveldb//:leveldb",
     ],
 )
 

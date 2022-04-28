@@ -8,7 +8,6 @@ This is a thin wrapper around a hash map.
 #include <memory>
 
 #include "leveldb/db.h"
-#include "src/common.h"
 #include "src/doc.h"
 
 class DocIndex {
@@ -17,13 +16,12 @@ class DocIndex {
   leveldb::DB* data_;
 
  public:
-  DocIndex();
-  ~DocIndex();
+  DocIndex(leveldb::DB* db);
 
   // add a doc into the index
   void AddDocument(const Document& doc);
   void AddDocument(Document* doc);
 
   // retrieve doc from the index
-  Document GetDocument(docID_t id);
+  Document GetDocument(uint32_t id);
 };
