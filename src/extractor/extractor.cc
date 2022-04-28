@@ -89,7 +89,7 @@ std::unique_ptr<Document> ParseXml(
   std::string title{};
   std::string text{};
   absl::flat_hash_set<std::string> links{};
-  bool is_redirect = false;
+  bool ignore = false;
   for (auto child_node = page_node->first_node(); child_node != nullptr;
        child_node = child_node->next_sibling()) {
     std::string name{child_node->name()};
@@ -97,6 +97,9 @@ std::unique_ptr<Document> ParseXml(
       id = atoi(child_node->value());
     } else if (name == "title") {
       title = child_node->value();
+      if (title.starts_with("Wikipedia:")) {
+        ignore = true;
+      }
     } else if (name == "revision") {
       // further child` node
       text = child_node->first_node("text")->value();
@@ -105,12 +108,13 @@ std::unique_ptr<Document> ParseXml(
       //   std::cout << link << "\n";
       text = remove_nonalphabetical(text);
     } else if (name == "redirect") {
-      is_redirect = true;
+      // ignore redirects
+      ignore = true;
       break;
     }
   }
 
-  if (is_redirect) {
+  if (ignore) {
     // LOG(INFO) << "Found redirect page, skipping";
     return nullptr;
   } else if (id == 0 || title == "" || text == "") {

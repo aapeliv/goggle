@@ -199,11 +199,14 @@ int main() {
         ss << "}";
       }
     }
-    ss << "]}";
-    res.set_content(ss.str(), "application/json; charset=utf-8");
+    ss << "],";
+
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                         clk::now() - start)
                         .count();
+
+    ss << "\"duration_ms\": " << std::to_string(duration) << "}";
+    res.set_content(ss.str(), "application/json; charset=utf-8");
     LOG(INFO) << "Searched for \"" << query << "\"";
     LOG(INFO) << "Matched " << ix_matches << " docs using index, i.e. "
               << (double)100. * ix_matches / N << " %";
