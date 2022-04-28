@@ -39,14 +39,14 @@ int main() {
   double total_page_goodness = 0.;
 
   auto backlinks = extract_dump(
-      "data/"
-      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
-      "data/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
       // "data/"
-      // "enwiki-20220420-pages-articles-multistream-index.txt",
+      // "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
       // "data/"
-      // "enwiki-20220420-pages-articles-multistream.xml.bz2",
+      // "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+      "data/"
+      "enwiki-20220420-pages-articles-multistream-index.txt",
+      "data/"
+      "enwiki-20220420-pages-articles-multistream.xml.bz2",
       [&](std::unique_ptr<Document> doc) {
         doc->set_id(N);
         tri_ix.AddDocument(N, doc->get_text());
@@ -107,7 +107,7 @@ int main() {
   // intialize page rank, set to uniform dist
   auto pagerank = std::make_unique<std::vector<float>>(N);
   for (auto& pr : *pagerank) {
-    pr = 1 / N;
+    pr = (double)1 / N;
   }
 
   for (int i = 0; i < 50; ++i) {
@@ -200,31 +200,33 @@ int main() {
         found.insert(doc_id);
       }
     }
-    for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
-      if (limit == 0) break;
-      if (found.contains(doc_id)) continue;
-      auto doc = forward_ix.GetDocument(doc_id);
-      ++ix_matches;
-      if (doc.get_text().find(query) != std::string::npos) {
-        --limit;
-        ++real_matches;
-        // LOG(INFO) << "found possible doc: " << doc_id
-        //           << ", title = " << doc.get_title();
-        if (is_first) {
-          is_first = false;
-        } else {
-          ss << ",";
+    if (limit != 0) {
+      for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
+        if (limit == 0) break;
+        if (found.contains(doc_id)) continue;
+        auto doc = forward_ix.GetDocument(doc_id);
+        ++ix_matches;
+        if (doc.get_text().find(query) != std::string::npos) {
+          --limit;
+          ++real_matches;
+          // LOG(INFO) << "found possible doc: " << doc_id
+          //           << ", title = " << doc.get_title();
+          if (is_first) {
+            is_first = false;
+          } else {
+            ss << ",";
+          }
+          ss << "{";
+          ss << "\"id\": " << doc_id << ",";
+          ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
+          ss << "\"is_title_match\": false,";
+          ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
+          if (real_matches == 1 && req.has_param("x")) {
+            ss << ",\"text\": \"" << escape_json(doc.get_text()) << "\"";
+          }
+          // ss << \"text\": " << doc.get_text();
+          ss << "}";
         }
-        ss << "{";
-        ss << "\"id\": " << doc_id << ",";
-        ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
-        ss << "\"is_title_match\": false,";
-        ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
-        if (real_matches == 1 && req.has_param("x")) {
-          ss << ",\"text\": \"" << escape_json(doc.get_text()) << "\"";
-        }
-        // ss << \"text\": " << doc.get_text();
-        ss << "}";
       }
     }
     ss << "],";

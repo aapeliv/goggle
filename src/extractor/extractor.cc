@@ -98,10 +98,21 @@ std::unique_ptr<Document> ParseXml(
       id = atoi(child_node->value());
     } else if (name == "title") {
       title = child_node->value();
-      if (title.starts_with("Wikipedia:")) ignore = true;
-      if (title.starts_with("Talk:")) ignore = true;
+      if (title.starts_with("Category:")) ignore = true;
+      if (title.starts_with("Draft:")) ignore = true;
+      if (title.starts_with("File:")) ignore = true;
+      if (title.starts_with("Gadget:")) ignore = true;
+      if (title.starts_with("Help:")) ignore = true;
+      if (title.starts_with("Media:")) ignore = true;
       if (title.starts_with("MediaWiki:")) ignore = true;
+      if (title.starts_with("Module:")) ignore = true;
       if (title.starts_with("Portal:")) ignore = true;
+      if (title.starts_with("Special:")) ignore = true;
+      if (title.starts_with("Talk:")) ignore = true;
+      if (title.starts_with("Template:")) ignore = true;
+      if (title.starts_with("TimedText:")) ignore = true;
+      if (title.starts_with("User:")) ignore = true;
+      if (title.starts_with("Wikipedia:")) ignore = true;
     } else if (name == "revision") {
       // further child` node
       text = child_node->first_node("text")->value();
@@ -110,10 +121,9 @@ std::unique_ptr<Document> ParseXml(
       //   std::cout << link << "\n";
       text = remove_nonalphabetical(text);
     } else if (name == "redirect") {
-      // ignore redirects
       ignore = true;
-      break;
     }
+    if (ignore) break;
   }
 
   if (ignore) {
