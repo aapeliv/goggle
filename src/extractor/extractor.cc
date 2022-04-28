@@ -128,7 +128,8 @@ std::unique_ptr<Document> ParseXml(
     // LOG(INFO) << "Found page; id=" << id << ", title=" << title << ", text
     // length=" << text.size();
     return std::make_unique<Document>(
-        id, title, text, std::vector<std::string>{links.begin(), links.end()});
+        0, id, title, text,
+        std::vector<std::string>{links.begin(), links.end()});
   }
 }
 
@@ -243,7 +244,6 @@ absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
     rapidxml::xml_document<> xml;
     xml.parse<0>(decompressed.get());
 
-    // first page
     for (auto page_node = xml.first_node(); page_node != nullptr;
          page_node = page_node->next_sibling()) {
       t0 = hrc::now();

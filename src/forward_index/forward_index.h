@@ -22,6 +22,7 @@ class DocIndex {
 
   // add a doc into the index
   void AddDocument(const Document& doc);
+  void AddDocument(Document* doc);
 
   // retrieve doc from the index
   Document GetDocument(docID_t id);

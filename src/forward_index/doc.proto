@@ -4,6 +4,7 @@ package goggle;
 
 message Doc {
   uint32 id = 1;
+  uint32 wiki_id = 5;
   string title = 2;
   string text = 3;
   repeated string links = 4;

@@ -33,8 +33,8 @@ int main() {
         tri_ix.AddDocument(N, doc->get_text());
         title_tri_ix.AddDocument(N, doc->get_title());
         // TODO
-        forward_ix.AddDocument(
-            Document(N, doc->get_title(), doc->get_text(), doc->get_links()));
+        forward_ix.AddDocument(Document(N, doc->get_id(), doc->get_title(),
+                                        doc->get_text(), doc->get_links()));
         ids[doc->get_title()] = N;
         out_link_count.push_back(doc->get_links().size());
         ++N;
