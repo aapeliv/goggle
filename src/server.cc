@@ -26,9 +26,9 @@ int main() {
 
   auto backlinks = extract_dump(
       "data/"
-      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242.bz2",
+      "enwiki-20220420-pages-articles-multistream-index.txt",
       "data/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+      "enwiki-20220420-pages-articles-multistream.xml.bz2",
       [&](std::unique_ptr<Document> doc) {
         tri_ix.AddDocument(N, doc->get_text());
         title_tri_ix.AddDocument(N, doc->get_title());
@@ -38,7 +38,8 @@ int main() {
         ids[doc->get_title()] = N;
         out_link_count.push_back(doc->get_links().size());
         ++N;
-      });
+      },
+      true);
 
   LOG(INFO) << "Have " << N << " docs";
 
