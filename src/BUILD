@@ -1,4 +1,14 @@
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "pagerank_proto",
+    srcs = ["pagerank.proto"],
+)
+
+cc_proto_library(
+    name = "pagerank_proto_cc",
+    deps = [":pagerank_proto"],
+)
 
 cc_binary(
     name = "server",
@@ -10,6 +20,7 @@ cc_binary(
     deps = [
         ":doc",
         ":escape_json",
+        ":pagerank_proto_cc",
         "//src/extractor",
         "//src/forward_index",
         "//src/trigram",

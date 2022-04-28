@@ -8,13 +8,15 @@
 #include "src/escape_json.h"
 #include "src/extractor/extractor.h"
 #include "src/forward_index/forward_index.h"
+#include "src/pagerank.pb.h"
 #include "src/trigram/trigram.h"
 
 using clk = std::chrono::steady_clock;
 
-int main(int argc, char* argv[]) {
+int main() {
+  // int main(int argc, char* argv[]) {
   // google::InitGoogleLogging(argv[0]);
-  // GOOGLE_PROTOBUF_VERIFY_VERSION;
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   LOG(INFO) << "Starting The Wikipedia Goggle.";
 
@@ -131,10 +133,20 @@ int main(int argc, char* argv[]) {
   tri_ix.PrepareForQueries(pagerank);
   title_tri_ix.PrepareForQueries(pagerank);
 
+  LOG(INFO) << "Done sorting indexes";
+
+  LOG(INFO) << "Saving stuff...";
+
   tri_ix.SaveToDB();
   title_tri_ix.SaveToDB();
 
-  LOG(INFO) << "Done sorting indexes";
+  goggle::PagerankVec proto_pr{};
+  *proto_pr.mutable_prs() = {pagerank->begin(), pagerank->end()};
+  auto s = db->Put(leveldb::WriteOptions(), "pr/pagerank",
+                   proto_pr.SerializeAsString());
+  CHECK(s.ok()) << "Failed to write pageranks";
+
+  LOG(INFO) << "Done saving...";
 
   httplib::Server srv;
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {

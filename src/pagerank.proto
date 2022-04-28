@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package goggle;
+
+message PagerankVec {
+  repeated float prs = 1;
+}
