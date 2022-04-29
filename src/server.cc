@@ -101,6 +101,7 @@ int main() {
   }
 
   // note use of 4-byte floats
+
   // dampening factor
   double d = 0.7;
 
@@ -114,7 +115,7 @@ int main() {
     double diff = 0.;
     auto new_pagerank = std::make_unique<std::vector<float>>(N);
     for (int n = 0; n < N; ++n) {
-      double new_pr = (1 - d) / N * page_goodness[n] / total_page_goodness;
+      double new_pr = (1 - d) * page_goodness[n] / total_page_goodness;
       // grab backlinks
       for (auto& link_id : backlinks_ids[n]) {
         new_pr += d * (*pagerank)[link_id] / out_link_count[link_id];

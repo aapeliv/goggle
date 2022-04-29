@@ -20,30 +20,6 @@
 using hrc = std::chrono::high_resolution_clock;
 using ms = std::chrono::milliseconds;
 
-std::string strip_text(const std::string s) {
-  std::string copy;
-
-  std::regex rgx(".*<text.*>(.*)</text>.*");
-  std::smatch match;
-
-  copy = std::regex_replace(s, rgx, "$1");
-
-  if (copy.find("== References =="))
-    copy = copy.substr(0, copy.find("== References =="));
-
-  std::regex rgx2("[{{].*[}}]");  // if between {{ }} delete whole thing
-  copy = std::regex_replace(copy, rgx2, "");
-
-  std::regex case1(R"(\[\[([^\[\]\|]+)\]\])");
-  std::regex case2(R"(\[\[([^\[\]\|]+)\|([^\[\]\|]+)\]\])");
-  copy = std::regex_replace(copy, case1, "$1");
-  copy = std::regex_replace(copy, case2, "$2");
-  std::regex rgx6("'''");
-  copy = std::regex_replace(copy, rgx6, "");
-
-  return copy;
-}
-
 absl::flat_hash_set<std::string> extract_links(std::string s) {
   absl::flat_hash_set<std::string> links;
   int i = 0;
@@ -202,7 +178,8 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_extracted_index_file(
   std::vector<std::pair<size_t, size_t>> chunks{0};
 
   std::ifstream index(filename);
-  CHECK(index.good()) << "index file not good";
+  CHECK(index.good()) << "index file (" << filename
+                      << ") not good: " << strerror(errno);
   size_t offset = 0;
 
   std::string line;
@@ -227,6 +204,8 @@ absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
     std::function<void(std::unique_ptr<Document>)> process_doc,
     bool dump_extracted) {
   std::ifstream dump(dump_filename);
+  CHECK(dump.good()) << "dump file (" << dump_filename
+                     << ") not good: " << strerror(errno);
 
   dump.seekg(0, std::ios::end);
   size_t dump_sz = dump.tellg();

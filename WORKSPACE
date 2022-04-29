@@ -2,15 +2,6 @@ workspace(name = "next")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# protobuf
-
-http_archive(
-    name = "rules_proto",
-    sha256 = "ec3692776b2973954e22ed3b6ed346e3c43e67269eacc8cd43c7fc6aa47b710a",
-    strip_prefix = "rules_proto-0bc8db13f8dc8f5d435be07e276712db1ca11a91",
-    urls = ["https://github.com/bazelbuild/rules_proto/archive/0bc8db13f8dc8f5d435be07e276712db1ca11a91.zip"],
-)
-
 # abseil
 
 http_archive(
@@ -70,9 +61,9 @@ http_archive(
 
 http_archive(
     name = "rules_foreign_cc",
-    sha256 = "1acd90dbc3c22b4dff24fc666aa6aa4b2d1ea75806c42d641b902aba6920303b",
-    strip_prefix = "rules_foreign_cc-f54068e889417d7d90fc0d171b8c44d4e1697785",
-    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/f54068e889417d7d90fc0d171b8c44d4e1697785.zip",
+    sha256 = "94f8d8fee28baa1827adc8ae21c35d32bb29c78b3b8aca3cbab13a7aaac1a523",
+    strip_prefix = "rules_foreign_cc-c57b55f2f6207c0c44c2b4a51dc235955d4f47b2",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/c57b55f2f6207c0c44c2b4a51dc235955d4f47b2.zip",
 )
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
