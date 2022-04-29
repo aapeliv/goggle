@@ -232,76 +232,53 @@ int main(int argc, char* argv[]) {
     auto query = req.get_param_value("q");
     int limit = 12;
     if (req.has_param("pl")) {
-      limit = std::stoi(req.get_param_value("pl"));
+      limit = std::min(std::stoi(req.get_param_value("pl")), 200);
     }
-    std::stringstream ss{};
-    bool is_first = true;
-    ss << "{\"results\": [";
-    size_t ix_matches = 0;
-    size_t real_matches = 0;
-    absl::flat_hash_set<int> found{};
     auto check_doc_title = [&](uint32_t doc_id) {
-      if (limit == 0) return false;
       auto doc = forward_ix.GetDocument(doc_id);
-      ++ix_matches;
       auto lower_title{doc.get_title()};
       std::transform(lower_title.begin(), lower_title.end(),
                      lower_title.begin(),
                      [](auto c) { return std::tolower(c); });
-      if (lower_title.find(query) != std::string::npos) {
-        --limit;
-        ++real_matches;
-        if (is_first) {
-          is_first = false;
-        } else {
-          ss << ",";
-        }
-        ss << "{";
-        ss << "\"id\": " << doc_id << ",";
-        ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
-        ss << "\"is_title_match\": true,";
-        ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
-        if (real_matches == 1 && req.has_param("x")) {
-          ss << ",\"text\": \"" << escape_json(doc.get_text()) << "\"";
-        }
-        // ss << \"text\": " << doc.get_text();
-        ss << "}";
-        found.insert(doc_id);
-      }
-      return true;
+      return lower_title.find(query) != std::string::npos;
     };
-    title_tri_ix.FindPossibleDocuments(query, pagerank, check_doc_title);
-    if (limit != 0) {
+
+    auto matches = title_tri_ix.FindPossibleDocuments(query, pagerank,
+                                                      check_doc_title, limit);
+    absl::flat_hash_set<int> title_matches{matches.begin(), matches.end()};
+    if (limit != matches.size()) {
       auto check_doc = [&](uint32_t doc_id) {
-        if (limit == 0) return false;
-        if (found.contains(doc_id)) return true;
+        if (title_matches.contains(doc_id)) return false;
         auto doc = forward_ix.GetDocument(doc_id);
-        ++ix_matches;
-        if (doc.get_text().find(query) != std::string::npos) {
-          --limit;
-          ++real_matches;
-          // LOG(INFO) << "found possible doc: " << doc_id
-          //           << ", title = " << doc.get_title();
-          if (is_first) {
-            is_first = false;
-          } else {
-            ss << ",";
-          }
-          ss << "{";
-          ss << "\"id\": " << doc_id << ",";
-          ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
-          ss << "\"is_title_match\": false,";
-          ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
-          if (real_matches == 1 && req.has_param("x")) {
-            ss << ",\"text\": \"" << escape_json(doc.get_text()) << "\"";
-          }
-          // ss << \"text\": " << doc.get_text();
-          ss << "}";
-        }
-        return true;
+        return doc.get_text().find(query) != std::string::npos;
       };
-      tri_ix.FindPossibleDocuments(query, pagerank, check_doc);
+      auto out = tri_ix.FindPossibleDocuments(query, pagerank, check_doc,
+                                              limit - matches.size());
+      std::copy(out.begin(), out.end(), std::back_inserter(matches));
     }
+
+    std::stringstream ss{};
+    bool is_first = true;
+    ss << "{\"results\": [";
+    for (auto&& doc_id : matches) {
+      // this repetition is not that bad given the leveldb cache, and it really
+      // simplifies the programming
+      auto doc = forward_ix.GetDocument(doc_id);
+      if (is_first) {
+        is_first = false;
+      } else {
+        ss << ",";
+      }
+      ss << "{";
+      ss << "\"id\": " << doc_id << ",";
+      ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
+      ss << "\"is_title_match\": "
+         << (title_matches.contains(doc_id) ? "true" : "false") << ",";
+      ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
+      // ss << \"text\": " << doc.get_text();
+      ss << "}";
+    }
+
     ss << "],";
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -310,12 +287,7 @@ int main(int argc, char* argv[]) {
 
     ss << "\"duration_ms\": " << std::to_string(duration) << "}";
     res.set_content(ss.str(), "application/json; charset=utf-8");
-    LOG(INFO) << "Searched for \"" << query << "\"";
-    LOG(INFO) << "Matched " << ix_matches << " docs using index, i.e. "
-              << (double)100. * ix_matches / N << " %";
-    LOG(INFO) << "Real matches: " << real_matches << ", i.e. "
-              << (double)100. * real_matches / ix_matches << " % of ix matches";
-    LOG(INFO) << "Total matched " << (double)100. * real_matches / N << " %";
+    LOG(INFO) << "Searched for \"" << query << "\" with page size " << limit;
     LOG(INFO) << "Took " << std::to_string(duration) << " ms";
 
     res.set_header("Access-Control-Allow-Origin",

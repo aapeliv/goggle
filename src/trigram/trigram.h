@@ -59,9 +59,9 @@ class TrigramIndex {
   // given a query string; a ranking importance function (NOTE: indexes must be
   // sorted with same importance (above)); and a check_doc function, will
   // retrieve possible docs and feed them to check_doc until that returns false
-  void FindPossibleDocuments(
+  std::vector<uint32_t> FindPossibleDocuments(
       const std::string_view& query,
       const std::unique_ptr<std::vector<float>>& importance,
       // returns true if we should keep going, false if not
-      std::function<bool(uint32_t)> check_doc);
+      std::function<bool(uint32_t)> check_doc, size_t page_size);
 };
