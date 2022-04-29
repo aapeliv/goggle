@@ -50,12 +50,26 @@ void TrigramIndex::AddDocument(uint32_t doc_id, const std::string_view& text) {
   }
 }
 
+bool doc_order(const std::unique_ptr<std::vector<float>>& importance,
+               uint32_t doc_a_id, uint32_t doc_b_id) {
+  auto ia = (*importance)[doc_a_id];
+  auto ib = (*importance)[doc_b_id];
+  if (ia != ib) {
+    return ia > ib;
+  } else {
+    return doc_a_id > doc_b_id;
+  }
+}
+
+/*
+Comparator for trigrams based on importance (e.g. page rank)
+*/
 void TrigramIndex::PrepareForQueries(
     const std::unique_ptr<std::vector<float>>& importance) {
+  auto cmp = std::bind(doc_order, std::cref(importance), std::placeholders::_1,
+                       std::placeholders::_2);
   for (auto& c : *data_) {
-    std::sort(c.begin(), c.end(), [&](auto a, auto b) {
-      return (*importance)[a] > (*importance)[b];
-    });
+    std::sort(c.begin(), c.end(), cmp);
     c.shrink_to_fit();
   }
   ready_for_queries_ = true;
@@ -66,7 +80,8 @@ Retrieve documents from the index using a query string, note that this may
 (with low probability) return also documents that don't match the query.
 */
 TrigramIndex::container_type TrigramIndex::FindPossibleDocuments(
-    const std::string_view& query) {
+    const std::string_view& query,
+    const std::unique_ptr<std::vector<float>>& importance) {
   CHECK(ready_for_queries_);
   auto trigrams_set = split_into_trigrams(query);
   std::vector<trigram_ix_t> trigrams{trigrams_set.begin(), trigrams_set.end()};
@@ -77,6 +92,15 @@ TrigramIndex::container_type TrigramIndex::FindPossibleDocuments(
               // ordered before) the second
               return GetContainerAt(a).size() < GetContainerAt(b).size();
             });
+  // LOG(INFO) << "Have trigrams:";
+  // for (auto&& trigram : trigrams) {
+  //   LOG(INFO) << "Have trigram: " << ix_to_string(trigram)
+  //             << ", size: " << GetContainerAt(trigram).size();
+  // }
+
+  auto cmp = std::bind(doc_order, std::cref(importance), std::placeholders::_1,
+                       std::placeholders::_2);
+
   container_type remaining_docs{};
   bool is_first = true;
   for (auto& ix : trigrams) {
@@ -92,21 +116,16 @@ TrigramIndex::container_type TrigramIndex::FindPossibleDocuments(
       auto it = remaining_docs.begin();
       while (it != remaining_docs.end()) {
         uint32_t doc_id = *it;
-        // now search in new list
-        bool found = false;
-        for (auto&& new_doc_id : docs) {
-          if (new_doc_id == doc_id) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
+        // the trigram lists are ordered according to
+        if (!std::binary_search(docs.begin(), docs.end(), doc_id, cmp)) {
           remaining_docs.erase(it);
         } else {
           ++it;
         }
       }
     }
+    // LOG(INFO) << "After trigram " << ix_to_string(ix) << ", have "
+    //           << remaining_docs.size() << " docs left";
   }
   LOG(INFO) << "Matched " << remaining_docs.size() << " docs";
   return remaining_docs;

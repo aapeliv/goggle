@@ -56,5 +56,7 @@ class TrigramIndex {
   void SaveToDB();
   void AddDocument(uint32_t doc_id, const std::string_view& text);
   void PrepareForQueries(const std::unique_ptr<std::vector<float>>& importance);
-  container_type FindPossibleDocuments(const std::string_view& query);
+  container_type FindPossibleDocuments(
+      const std::string_view& query,
+      const std::unique_ptr<std::vector<float>>& importance);
 };

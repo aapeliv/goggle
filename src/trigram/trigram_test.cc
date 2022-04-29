@@ -29,17 +29,19 @@ TEST(TrigramIndex, Basic) {
 
   ix.PrepareForQueries(importance);
 
-  EXPECT_THAT(ix.FindPossibleDocuments("hello"), UnorderedElementsAre(0, 1));
+  EXPECT_THAT(ix.FindPossibleDocuments("hello", importance),
+              UnorderedElementsAre(0, 1));
 
   LOG(INFO) << "Searching for 'hello'";
-  for (auto&& doc_id : ix.FindPossibleDocuments("hello")) {
+  for (auto&& doc_id : ix.FindPossibleDocuments("hello", importance)) {
     LOG(INFO) << "Found docID: " << doc_id;
   }
 
-  EXPECT_THAT(ix.FindPossibleDocuments("world"), UnorderedElementsAre(1, 3));
+  EXPECT_THAT(ix.FindPossibleDocuments("world", importance),
+              UnorderedElementsAre(1, 3));
 
   LOG(INFO) << "Searching for 'world'";
-  for (auto&& doc_id : ix.FindPossibleDocuments("world")) {
+  for (auto&& doc_id : ix.FindPossibleDocuments("world", importance)) {
     LOG(INFO) << "Found docID: " << doc_id;
   }
 

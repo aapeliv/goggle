@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
     size_t ix_matches = 0;
     size_t real_matches = 0;
     absl::flat_hash_set<int> found{};
-    for (auto&& doc_id : title_tri_ix.FindPossibleDocuments(query)) {
+    for (auto&& doc_id : title_tri_ix.FindPossibleDocuments(query, pagerank)) {
       if (limit == 0) break;
       auto doc = forward_ix.GetDocument(doc_id);
       ++ix_matches;
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
       }
     }
     if (limit != 0) {
-      for (auto&& doc_id : tri_ix.FindPossibleDocuments(query)) {
+      for (auto&& doc_id : tri_ix.FindPossibleDocuments(query, pagerank)) {
         if (limit == 0) break;
         if (found.contains(doc_id)) continue;
         auto doc = forward_ix.GetDocument(doc_id);
