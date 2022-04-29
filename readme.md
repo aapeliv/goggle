@@ -13,7 +13,7 @@ bazel test //...
 ```sh
 # bazel run //directory:target
 # e.g.
-bazel run //src:server
+bazel run //src:google
 # target comes from BUILD file `name` attribute
 ```
 
