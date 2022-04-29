@@ -17,5 +17,7 @@ trigram_ix_t triplet_to_ix(trigram_ix_t a, trigram_ix_t b, trigram_ix_t c);
 
 trigram_ix_t string_to_ix(std::string s);
 
+std::string ix_to_string(trigram_ix_t ix);
+
 absl::flat_hash_set<trigram_ix_t> split_into_trigrams(
     const std::string_view& text);

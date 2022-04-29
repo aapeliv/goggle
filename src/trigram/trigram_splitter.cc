@@ -30,6 +30,19 @@ trigram_ix_t string_to_ix(std::string s) {
                        char_to_number(s[2]));
 }
 
+std::string ix_to_string(trigram_ix_t ix) {
+  CHECK(ix >= 0 && ix <= alphabet_length * alphabet_length * alphabet_length);
+  std::string out{"   "};
+  for (int i = 0; i < 3; ++i) {
+    auto pos = ix % alphabet_length;
+    if (pos > 0) {
+      out[2 - i] = 'a' + pos - 1;
+    }
+    ix /= alphabet_length;
+  }
+  return out;
+}
+
 absl::flat_hash_set<trigram_ix_t> split_into_trigrams(
     const std::string_view& text) {
   absl::flat_hash_set<trigram_ix_t> out{};
