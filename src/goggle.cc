@@ -259,6 +259,14 @@ int main(int argc, char* argv[]) {
               << (double)100. * real_matches / ix_matches << " % of ix matches";
     LOG(INFO) << "Total matched " << (double)100. * real_matches / N << " %";
     LOG(INFO) << "Took " << std::to_string(duration) << " ms";
+
+    res.set_header("Access-Control-Allow-Origin",
+                   req.get_header_value("Origin").c_str());
+    res.set_header("Allow", "GET, POST, HEAD, OPTIONS");
+    res.set_header(
+        "Access-Control-Allow-Headers",
+        "X-Requested-With, Content-Type, Accept, Origin, Authorization");
+    res.set_header("Access-Control-Allow-Methods", "OPTIONS, GET, POST, HEAD");
   });
 
   LOG(INFO) << "Serving on 8080.";
