@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package goggle;
+
+message DbInfo {
+  uint32 N = 1;
+  bool ready = 2;
+  repeated float prs = 3;
+}

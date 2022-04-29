@@ -1,13 +1,13 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
 
 proto_library(
-    name = "pagerank_proto",
-    srcs = ["pagerank.proto"],
+    name = "db_proto",
+    srcs = ["db.proto"],
 )
 
 cc_proto_library(
-    name = "pagerank_proto_cc",
-    deps = [":pagerank_proto"],
+    name = "db_proto_cc",
+    deps = [":db_proto"],
 )
 
 cc_binary(
@@ -18,9 +18,9 @@ cc_binary(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":db_proto_cc",
         ":doc",
         ":escape_json",
-        ":pagerank_proto_cc",
         "//src/extractor",
         "//src/forward_index",
         "//src/trigram",

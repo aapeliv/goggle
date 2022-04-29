@@ -4,11 +4,11 @@
 #include "absl/container/flat_hash_map.h"
 #include "glog/logging.h"
 #include "httplib.h"
+#include "src/db.pb.h"
 #include "src/doc.h"
 #include "src/escape_json.h"
 #include "src/extractor/extractor.h"
 #include "src/forward_index/forward_index.h"
-#include "src/pagerank.pb.h"
 #include "src/trigram/trigram.h"
 
 using clk = std::chrono::steady_clock;
@@ -143,10 +143,12 @@ int main() {
     tri_ix.SaveToDB();
     title_tri_ix.SaveToDB();
 
-    goggle::PagerankVec proto_pr{};
-    *proto_pr.mutable_prs() = {pagerank->begin(), pagerank->end()};
-    auto s = db->Put(leveldb::WriteOptions(), "pr/pagerank",
-                     proto_pr.SerializeAsString());
+    goggle::DbInfo proto_info{};
+    proto_info.set_n(N);
+    proto_info.set_ready(true);
+    *proto_info.mutable_prs() = {pagerank->begin(), pagerank->end()};
+    auto s = db->Put(leveldb::WriteOptions(), "db_info",
+                     proto_info.SerializeAsString());
     CHECK(s.ok()) << "Failed to write pageranks";
   }
   LOG(INFO) << "Done saving...";
