@@ -32,4 +32,6 @@ TEST(DocIndex, Basic) {
       Document(8, 94, "Yale", "New Haven, CT", std::vector<std::string>{}));
 
   EXPECT_EQ(ix.GetDocument(2).get_title(), "Brown");
+
+  delete db;
 }

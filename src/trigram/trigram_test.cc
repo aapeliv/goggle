@@ -42,4 +42,6 @@ TEST(TrigramIndex, Basic) {
   for (auto&& doc_id : ix.FindPossibleDocuments("world")) {
     LOG(INFO) << "Found docID: " << doc_id;
   }
+
+  delete db;
 }

@@ -29,124 +29,126 @@ int main() {
   DocIndex forward_ix{db};
   TrigramIndex tri_ix{"text", db};
   TrigramIndex title_tri_ix{"titles", db};
-
-  // assign each doc an ID
+  auto pagerank = std::make_unique<std::vector<float>>();
   int N = 0;
-  // title -> id
-  absl::flat_hash_map<std::string, int> ids{};
-  std::vector<int> out_link_count{};
-  std::vector<float> page_goodness{};
-  double total_page_goodness = 0.;
 
-  auto backlinks = extract_dump(
-      "data/"
-      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
-      "data/"
-      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
-      // "data/"
-      // "enwiki-20220420-pages-articles-multistream-index.txt",
-      // "data/"
-      // "enwiki-20220420-pages-articles-multistream.xml.bz2",
-      [&](std::unique_ptr<Document> doc) {
-        doc->set_id(N);
-        tri_ix.AddDocument(N, doc->get_text());
-        title_tri_ix.AddDocument(N, doc->get_title());
-        // TODO
-        forward_ix.AddDocument(doc.get());
-        ids[doc->get_title()] = N;
-        out_link_count.push_back(doc->get_links().size());
-        ++N;
+  {
+    // assign each doc an ID
+    // title -> id
+    absl::flat_hash_map<std::string, int> ids{};
+    std::vector<int> out_link_count{};
+    std::vector<float> page_goodness{};
+    double total_page_goodness = 0.;
 
-        // add in some manual page goodness
-        // outgoing links
-        int link_count = doc->get_links().size();
-        int link_chars = 0;
-        for (auto&& l : doc->get_links()) {
-          link_chars += l.size();
+    auto backlinks = extract_dump(
+        "data/"
+        "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
+        "data/"
+        "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+        // "data/"
+        // "enwiki-20220420-pages-articles-multistream-index.txt",
+        // "data/"
+        // "enwiki-20220420-pages-articles-multistream.xml.bz2",
+        [&](std::unique_ptr<Document> doc) {
+          doc->set_id(N);
+          tri_ix.AddDocument(N, doc->get_text());
+          title_tri_ix.AddDocument(N, doc->get_title());
+          // TODO
+          forward_ix.AddDocument(doc.get());
+          ids[doc->get_title()] = N;
+          out_link_count.push_back(doc->get_links().size());
+          ++N;
+
+          // add in some manual page goodness
+          // outgoing links
+          int link_count = doc->get_links().size();
+          int link_chars = 0;
+          for (auto&& l : doc->get_links()) {
+            link_chars += l.size();
+          }
+          // page size, and subtract roughly link size
+          int page_chars = doc->get_text().size();
+          // > ~5k words
+          bool is_very_long = (page_chars - link_chars) > 25'000;
+          // < ~500 words
+          bool is_short = (page_chars - link_chars) > 2'500;
+          bool link_page = (double)page_chars / link_count < 90.;
+          bool has_few_links = link_count < 10;
+          double goodness = 10 + 2 * (is_very_long * (1 - link_page)) -
+                            2 * is_short - 8 * link_page - 1 * has_few_links;
+          page_goodness.push_back(goodness);
+          total_page_goodness += goodness;
+          // end manual ranking
+        },
+        true);
+
+    LOG(INFO) << "Have " << N << " docs";
+
+    // ** Pagerank computation
+    LOG(INFO) << "About to compute PageRank";
+
+    // turn backlinks map into ids map
+    absl::flat_hash_map<int, std::vector<int>> backlinks_ids{};
+
+    for (auto&& [target, links] : backlinks) {
+      if (ids.contains(target)) {
+        std::vector<int> link_ids{};
+        for (auto&& link : links) {
+          if (ids.contains(link)) {
+            link_ids.push_back(ids[link]);
+          }
         }
-        // page size, and subtract roughly link size
-        int page_chars = doc->get_text().size();
-        // > ~5k words
-        bool is_very_long = (page_chars - link_chars) > 25'000;
-        // < ~500 words
-        bool is_short = (page_chars - link_chars) > 2'500;
-        bool link_page = (double)page_chars / link_count < 90.;
-        bool has_few_links = link_count < 10;
-        double goodness = 10 + 2 * (is_very_long * (1 - link_page)) -
-                          2 * is_short - 8 * link_page - 1 * has_few_links;
-        page_goodness.push_back(goodness);
-        total_page_goodness += goodness;
-        // end manual ranking
-      },
-      true);
+        backlinks_ids.try_emplace(ids[target], link_ids);
+      }
+    }
 
-  LOG(INFO) << "Have " << N << " docs";
+    // note use of 4-byte floats
 
-  // ** Pagerank computation
-  LOG(INFO) << "About to compute PageRank";
+    // dampening factor
+    double d = 0.7;
 
-  // turn backlinks map into ids map
-  absl::flat_hash_map<int, std::vector<int>> backlinks_ids{};
+    // intialize page rank, set to uniform dist
+    pagerank = std::make_unique<std::vector<float>>(N);
+    for (auto& pr : *pagerank) {
+      pr = (double)1 / N;
+    }
 
-  for (auto&& [target, links] : backlinks) {
-    if (ids.contains(target)) {
-      std::vector<int> link_ids{};
-      for (auto&& link : links) {
-        if (ids.contains(link)) {
-          link_ids.push_back(ids[link]);
+    for (int i = 0; i < 50; ++i) {
+      double diff = 0.;
+      auto new_pagerank = std::make_unique<std::vector<float>>(N);
+      for (int n = 0; n < N; ++n) {
+        double new_pr = (1 - d) * page_goodness[n] / total_page_goodness;
+        // grab backlinks
+        for (auto& link_id : backlinks_ids[n]) {
+          new_pr += d * (*pagerank)[link_id] / out_link_count[link_id];
         }
+        (*new_pagerank)[n] = new_pr;
+        diff += std::abs(new_pr - (*pagerank)[n]);
       }
-      backlinks_ids.try_emplace(ids[target], link_ids);
+      LOG(INFO) << "iterated, diff = " << diff;
+      pagerank = std::move(new_pagerank);
+      if (diff < 1e-9) break;
     }
+
+    LOG(INFO) << "Done computing PageRank";
+    LOG(INFO) << "Sorting indexes";
+
+    tri_ix.PrepareForQueries(pagerank);
+    title_tri_ix.PrepareForQueries(pagerank);
+
+    LOG(INFO) << "Done sorting indexes";
+
+    LOG(INFO) << "Saving stuff...";
+
+    tri_ix.SaveToDB();
+    title_tri_ix.SaveToDB();
+
+    goggle::PagerankVec proto_pr{};
+    *proto_pr.mutable_prs() = {pagerank->begin(), pagerank->end()};
+    auto s = db->Put(leveldb::WriteOptions(), "pr/pagerank",
+                     proto_pr.SerializeAsString());
+    CHECK(s.ok()) << "Failed to write pageranks";
   }
-
-  // note use of 4-byte floats
-
-  // dampening factor
-  double d = 0.7;
-
-  // intialize page rank, set to uniform dist
-  auto pagerank = std::make_unique<std::vector<float>>(N);
-  for (auto& pr : *pagerank) {
-    pr = (double)1 / N;
-  }
-
-  for (int i = 0; i < 50; ++i) {
-    double diff = 0.;
-    auto new_pagerank = std::make_unique<std::vector<float>>(N);
-    for (int n = 0; n < N; ++n) {
-      double new_pr = (1 - d) * page_goodness[n] / total_page_goodness;
-      // grab backlinks
-      for (auto& link_id : backlinks_ids[n]) {
-        new_pr += d * (*pagerank)[link_id] / out_link_count[link_id];
-      }
-      (*new_pagerank)[n] = new_pr;
-      diff += std::abs(new_pr - (*pagerank)[n]);
-    }
-    LOG(INFO) << "iterated, diff = " << diff;
-    pagerank = std::move(new_pagerank);
-    if (diff < 1e-9) break;
-  }
-
-  LOG(INFO) << "Done computing PageRank";
-  LOG(INFO) << "Sorting indexes";
-
-  tri_ix.PrepareForQueries(pagerank);
-  title_tri_ix.PrepareForQueries(pagerank);
-
-  LOG(INFO) << "Done sorting indexes";
-
-  LOG(INFO) << "Saving stuff...";
-
-  tri_ix.SaveToDB();
-  title_tri_ix.SaveToDB();
-
-  goggle::PagerankVec proto_pr{};
-  *proto_pr.mutable_prs() = {pagerank->begin(), pagerank->end()};
-  auto s = db->Put(leveldb::WriteOptions(), "pr/pagerank",
-                   proto_pr.SerializeAsString());
-  CHECK(s.ok()) << "Failed to write pageranks";
-
   LOG(INFO) << "Done saving...";
 
   httplib::Server srv;
@@ -250,4 +252,6 @@ int main() {
   LOG(INFO) << "Serving on 8080.";
 
   srv.listen("0.0.0.0", 8080);
+
+  delete db;
 }
