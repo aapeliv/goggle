@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
   options.create_if_missing = true;
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);
   options.block_cache = leveldb::NewLRUCache(100 * 1024 * 1024);  // 100MB cache
-  leveldb::Status status = leveldb::DB::Open(options, "goggle_db", &db);
+  leveldb::Status status = leveldb::DB::Open(options, absl::GetFlag(FLAGS_db_dir), &db);
   CHECK(status.ok()) << "Failed to open leveldb";
 
   // check if the DB is indexed and ready
@@ -82,10 +82,6 @@ int main(int argc, char* argv[]) {
 
     auto backlinks = extract_dump(
         absl::GetFlag(FLAGS_index_file), absl::GetFlag(FLAGS_dump_file),
-        // "data/"
-        // "enwiki-20220420-pages-articles-multistream-index.txt",
-        // "data/"
-        // "enwiki-20220420-pages-articles-multistream.xml.bz2",
         [&](std::unique_ptr<Document> doc) {
           doc->set_id(N);
           tri_ix.AddDocument(N, doc->get_text());
