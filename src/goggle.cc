@@ -196,8 +196,6 @@ int main(int argc, char* argv[]) {
     // exists_and_ready: load everything
     LOG(INFO) << "Found ready database, loading index from disk";
 
-    LOG(INFO) << "Loading info";
-
     std::string out;
     auto s = db->Get(leveldb::ReadOptions(), "db_info", &out);
     CHECK(status.ok()) << "Couldn't read db info";
@@ -205,19 +203,13 @@ int main(int argc, char* argv[]) {
     proto_db_info.ParseFromString(out);
     N = proto_db_info.n();
 
-    LOG(INFO) << "Loading pagerank";
-
     s = db->Get(leveldb::ReadOptions(), "pagerank", &out);
     CHECK(s.ok()) << "Failed to read pageranks";
     goggle::PageRankVec proto_prs{};
     proto_prs.ParseFromString(out);
     *pagerank = {proto_prs.prs().begin(), proto_prs.prs().end()};
 
-    LOG(INFO) << "Loading title ix";
-
     title_tri_ix.LoadFromDB();
-
-    LOG(INFO) << "Loading text ix";
 
     tri_ix.LoadFromDB();
     LOG(INFO) << "Loaded index from disk";

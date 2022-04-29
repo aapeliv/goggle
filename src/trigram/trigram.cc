@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <memory>
 #include <string_view>
 
 #include "leveldb/db.h"
 #include "src/trigram/trigram.pb.h"
+
+using clk = std::chrono::steady_clock;
 
 TrigramIndex::container_type& TrigramIndex::GetContainerAt(size_t ix) {
   return (data_.get())->at(ix);
@@ -105,6 +108,8 @@ void TrigramIndex::FindPossibleDocuments(
   auto cmp = std::bind(doc_order, std::cref(importance), std::placeholders::_1,
                        std::placeholders::_2);
 
+  auto start = clk::now();
+
   container_type remaining_docs{};
   bool is_first = true;
   for (auto& ix : trigrams) {
@@ -123,7 +128,8 @@ void TrigramIndex::FindPossibleDocuments(
         LOG(INFO) << "Less than 50 docs, breaking";
         break;
       }
-      if (remaining_docs.size() > 0.01 * total_docs) {
+      if (remaining_docs.size() > 1000 &&
+          remaining_docs.size() > 0.05 * docs.size()) {
         // if the two sets being intersected are huge; then we do a linear scan
         // through both for the intersection
 
@@ -152,7 +158,13 @@ void TrigramIndex::FindPossibleDocuments(
     LOG(INFO) << "After trigram " << ix_to_string(ix) << ", have "
               << remaining_docs.size() << " docs left";
   }
-  LOG(INFO) << "Matched " << remaining_docs.size() << " docs";
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(clk::now() - start)
+          .count();
+
+  LOG(INFO) << "Matched " << remaining_docs.size() << " docs in " << duration
+            << " ms";
+
   for (auto&& doc_id : remaining_docs) {
     if (!check_doc(doc_id)) break;
   }
