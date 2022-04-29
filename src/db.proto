@@ -5,5 +5,9 @@ package goggle;
 message DbInfo {
   uint32 N = 1;
   bool ready = 2;
-  repeated float prs = 3;
+  bool initd = 3;
+}
+
+message PageRankVec {
+  repeated float prs = 1;
 }

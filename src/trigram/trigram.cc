@@ -18,14 +18,13 @@ TrigramIndex::TrigramIndex(std::string name, leveldb::DB* db)
 
 void TrigramIndex::LoadFromDB() {
   for (int ix = 0; ix < ngram_count; ++ix) {
-    auto c = (data_.get())->at(ix);
     std::string out;
     auto s = db_->Get(leveldb::ReadOptions(),
                       "trgm/" + name_ + "/" + std::to_string(ix), &out);
     CHECK(s.ok()) << "Failed to read trigram";
     goggle::TrigramVec vec{};
     vec.ParseFromString(out);
-    c = {vec.docs().begin(), vec.docs().end()};
+    (*data_)[ix] = {vec.docs().begin(), vec.docs().end()};
   }
   ready_for_queries_ = true;
 }

@@ -45,13 +45,34 @@ int main(int argc, char* argv[]) {
   leveldb::Status status = leveldb::DB::Open(options, "goggle_db", &db);
   CHECK(status.ok()) << "Failed to open leveldb";
 
+  // check if the DB is indexed and ready
+  bool exists_and_ready = false;
+  {
+    std::string out;
+    auto s = db->Get(leveldb::ReadOptions(), "db_info", &out);
+    CHECK(status.ok()) << "Couldn't read db info";
+    if (out.size() > 0) {
+      goggle::DbInfo proto_db_info{};
+      proto_db_info.ParseFromString(out);
+      CHECK(proto_db_info.initd()) << "Found broken db: not initialized";
+      CHECK(proto_db_info.ready()) << "Found broken db: not ready";
+      exists_and_ready = true;
+    }
+  }
+
   DocIndex forward_ix{db};
   TrigramIndex tri_ix{"text", db};
   TrigramIndex title_tri_ix{"titles", db};
   auto pagerank = std::make_unique<std::vector<float>>();
   int N = 0;
 
-  {
+  if (!exists_and_ready) {
+    goggle::DbInfo proto_info_init{};
+    proto_info_init.set_initd(true);
+    auto s = db->Put(leveldb::WriteOptions(), "db_info",
+                     proto_info_init.SerializeAsString());
+    CHECK(s.ok()) << "Failed to write empty db info";
+
     // assign each doc an ID
     // title -> id
     absl::flat_hash_map<std::string, int> ids{};
@@ -155,18 +176,43 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Saving stuff...";
 
-    tri_ix.SaveToDB();
     title_tri_ix.SaveToDB();
+    tri_ix.SaveToDB();
 
     goggle::DbInfo proto_info{};
     proto_info.set_n(N);
+    proto_info.set_initd(true);
     proto_info.set_ready(true);
-    *proto_info.mutable_prs() = {pagerank->begin(), pagerank->end()};
-    auto s = db->Put(leveldb::WriteOptions(), "db_info",
-                     proto_info.SerializeAsString());
+    s = db->Put(leveldb::WriteOptions(), "db_info",
+                proto_info.SerializeAsString());
+    CHECK(s.ok()) << "Failed to write db info";
+
+    goggle::PageRankVec proto_prs{};
+    *proto_prs.mutable_prs() = {pagerank->begin(), pagerank->end()};
+    s = db->Put(leveldb::WriteOptions(), "pagerank",
+                proto_prs.SerializeAsString());
     CHECK(s.ok()) << "Failed to write pageranks";
+
+    LOG(INFO) << "Done saving...";
+  } else {
+    // exists_and_ready: load everything
+    std::string out;
+
+    auto s = db->Get(leveldb::ReadOptions(), "db_info", &out);
+    CHECK(status.ok()) << "Couldn't read db info";
+    goggle::DbInfo proto_db_info{};
+    proto_db_info.ParseFromString(out);
+    N = proto_db_info.n();
+
+    s = db->Get(leveldb::ReadOptions(), "pagerank", &out);
+    CHECK(s.ok()) << "Failed to read pageranks";
+    goggle::PageRankVec proto_prs{};
+    proto_prs.ParseFromString(out);
+    *pagerank = {proto_prs.prs().begin(), proto_prs.prs().end()};
+
+    title_tri_ix.LoadFromDB();
+    tri_ix.LoadFromDB();
   }
-  LOG(INFO) << "Done saving...";
 
   httplib::Server srv;
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
