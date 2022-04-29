@@ -14,5 +14,4 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
     size_t dump_sz, std::string filename);
 absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
     std::string index_filename, std::string dump_filename,
-    std::function<void(std::unique_ptr<Document>)> process_doc,
-    bool dump_extracted = false);
+    std::function<void(std::unique_ptr<Document>)> process_doc);

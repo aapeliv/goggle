@@ -1,6 +1,5 @@
 #include "src/forward_index/forward_index.h"
 
-#include "absl/container/flat_hash_map.h"
 #include "glog/logging.h"
 #include "leveldb/db.h"
 #include "src/forward_index/doc.pb.h"

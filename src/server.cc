@@ -2,6 +2,9 @@
 #include <memory>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
+#include "absl/flags/usage.h"
 #include "glog/logging.h"
 #include "httplib.h"
 #include "src/db.pb.h"
@@ -11,12 +14,23 @@
 #include "src/forward_index/forward_index.h"
 #include "src/trigram/trigram.h"
 
+ABSL_FLAG(std::string, db_dir, "goggle_db/", "database directory");
+ABSL_FLAG(std::string, index_file,
+          "data/enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
+          "path to index file");
+ABSL_FLAG(std::string, dump_file,
+          "data/enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+          "path to dump file");
+
 using clk = std::chrono::steady_clock;
 
-int main() {
-  // int main(int argc, char* argv[]) {
-  // google::InitGoogleLogging(argv[0]);
+int main(int argc, char* argv[]) {
+  google::InitGoogleLogging(argv[0]);
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  absl::SetProgramUsageMessage("The Wikipedia Goggle");
+  absl::ParseCommandLine(argc, argv);
+  FLAGS_logtostderr = 1;
 
   LOG(INFO) << "Starting The Wikipedia Goggle.";
 
@@ -41,10 +55,7 @@ int main() {
     double total_page_goodness = 0.;
 
     auto backlinks = extract_dump(
-        "data/"
-        "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
-        "data/"
-        "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+        absl::GetFlag(FLAGS_index_file), absl::GetFlag(FLAGS_dump_file),
         // "data/"
         // "enwiki-20220420-pages-articles-multistream-index.txt",
         // "data/"
@@ -79,8 +90,7 @@ int main() {
           page_goodness.push_back(goodness);
           total_page_goodness += goodness;
           // end manual ranking
-        },
-        true);
+        });
 
     LOG(INFO) << "Have " << N << " docs";
 

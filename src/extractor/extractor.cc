@@ -126,58 +126,6 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_index_file(
   std::vector<std::pair<size_t, size_t>> chunks{0};
 
   std::ifstream index(filename);
-  // dumb way to get file size
-  index.seekg(0, std::ios::end);
-  size_t index_len_compressed = index.tellg();
-  // back to start
-  index.seekg(0);
-  size_t index_len_decompressed_allocated = 5 * index_len_compressed;
-  size_t index_len_decompressed_actual = index_len_decompressed_allocated;
-  auto index_data =
-      std::unique_ptr<char[]>(new char[index_len_decompressed_allocated]);
-  {
-    auto index_data_compressed =
-        std::unique_ptr<char[]>(new char[index_len_compressed]);
-
-    CHECK(index.good()) << "Failed to seek";
-    index.read(index_data_compressed.get(), index_len_compressed);
-    CHECK(index.good()) << "Failed to read";
-
-    // decompress the stream
-    int index_res = BZ2_bzBuffToBuffDecompress(
-        index_data.get(),
-        reinterpret_cast<unsigned int*>(&index_len_decompressed_actual),
-        index_data_compressed.get(), index_len_compressed, 0, 0);
-    CHECK(index_res != BZ_OUTBUFF_FULL) << "Didn't reserve enough memory.";
-    CHECK(index_res == 0) << "Failed to decompress";
-  }
-
-  size_t offset = 0;
-
-  std::stringstream ss(std::move(index_data.get()));
-
-  std::string line;
-  while (std::getline(ss, line)) {
-    std::string first_bit;
-    std::stringstream line_ss(line);
-    std::getline(line_ss, first_bit, ':');
-    size_t new_offset = std::stoi(first_bit);
-    if (new_offset != offset) {
-      if (offset != 0) {
-        chunks.push_back(std::make_pair(offset, new_offset));
-      }
-      offset = new_offset;
-    }
-  }
-  chunks.push_back(std::make_pair(offset, dump_sz));
-  return chunks;
-}
-
-std::vector<std::pair<size_t, size_t>> extract_chunks_from_extracted_index_file(
-    size_t dump_sz, std::string filename) {
-  std::vector<std::pair<size_t, size_t>> chunks{0};
-
-  std::ifstream index(filename);
   CHECK(index.good()) << "index file (" << filename
                       << ") not good: " << strerror(errno);
   size_t offset = 0;
@@ -201,8 +149,7 @@ std::vector<std::pair<size_t, size_t>> extract_chunks_from_extracted_index_file(
 // returns backlinks map
 absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
     std::string index_filename, std::string dump_filename,
-    std::function<void(std::unique_ptr<Document>)> process_doc,
-    bool dump_extracted) {
+    std::function<void(std::unique_ptr<Document>)> process_doc) {
   std::ifstream dump(dump_filename);
   CHECK(dump.good()) << "dump file (" << dump_filename
                      << ") not good: " << strerror(errno);
@@ -213,11 +160,7 @@ absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
   LOG(INFO) << "dump_sz: " << dump_sz;
 
   std::vector<std::pair<size_t, size_t>> chunks{};
-  if (dump_extracted) {
-    chunks = extract_chunks_from_extracted_index_file(dump_sz, index_filename);
-  } else {
-    chunks = extract_chunks_from_index_file(dump_sz, index_filename);
-  }
+  chunks = extract_chunks_from_index_file(dump_sz, index_filename);
 
   // key: link to, value: list of pages that link here
   absl::flat_hash_map<std::string, std::vector<std::string>> backlinks{};

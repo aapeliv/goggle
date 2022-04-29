@@ -26,6 +26,10 @@ cc_binary(
         "//src/trigram",
         "@com_github_google_glog//:glog",
         "@com_github_google_leveldb//:leveldb",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/flags:usage",
         "@httplib",
     ],
 )
