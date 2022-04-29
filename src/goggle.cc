@@ -214,6 +214,8 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "Loaded index from disk";
   }
 
+  LOG(INFO) << "All set up, have " << N << " docs";
+
   httplib::Server srv;
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
     res.set_content("{\"msg\": \"hello world\"}",
@@ -227,7 +229,7 @@ int main(int argc, char* argv[]) {
                       "application/json; charset=utf-8");
     }
     auto query = req.get_param_value("q");
-    int limit = -1;
+    int limit = 100;
     if (req.has_param("pl")) {
       limit = std::stoi(req.get_param_value("pl"));
     }
