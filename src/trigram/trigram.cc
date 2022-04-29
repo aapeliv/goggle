@@ -77,11 +77,12 @@ void TrigramIndex::PrepareForQueries(
 
 /*
 Retrieve documents from the index using a query string, note that this may
-(with low probability) return also documents that don't match the query.
+return also documents that don't match the query.
 */
-TrigramIndex::container_type TrigramIndex::FindPossibleDocuments(
+void TrigramIndex::FindPossibleDocuments(
     const std::string_view& query,
-    const std::unique_ptr<std::vector<float>>& importance) {
+    const std::unique_ptr<std::vector<float>>& importance,
+    std::function<bool(uint32_t)> check_doc) {
   CHECK(ready_for_queries_);
   auto trigrams_set = split_into_trigrams(query);
   std::vector<trigram_ix_t> trigrams{trigrams_set.begin(), trigrams_set.end()};
@@ -128,5 +129,7 @@ TrigramIndex::container_type TrigramIndex::FindPossibleDocuments(
     //           << remaining_docs.size() << " docs left";
   }
   LOG(INFO) << "Matched " << remaining_docs.size() << " docs";
-  return remaining_docs;
+  for (auto&& doc_id : remaining_docs) {
+    if (!check_doc(doc_id)) break;
+  }
 }

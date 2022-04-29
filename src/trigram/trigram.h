@@ -56,7 +56,12 @@ class TrigramIndex {
   void SaveToDB();
   void AddDocument(uint32_t doc_id, const std::string_view& text);
   void PrepareForQueries(const std::unique_ptr<std::vector<float>>& importance);
-  container_type FindPossibleDocuments(
+  // given a query string; a ranking importance function (NOTE: indexes must be
+  // sorted with same importance (above)); and a check_doc function, will
+  // retrieve possible docs and feed them to check_doc until that returns false
+  void FindPossibleDocuments(
       const std::string_view& query,
-      const std::unique_ptr<std::vector<float>>& importance);
+      const std::unique_ptr<std::vector<float>>& importance,
+      // returns true if we should keep going, false if not
+      std::function<bool(uint32_t)> check_doc);
 };

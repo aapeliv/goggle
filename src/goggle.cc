@@ -237,8 +237,8 @@ int main(int argc, char* argv[]) {
     size_t ix_matches = 0;
     size_t real_matches = 0;
     absl::flat_hash_set<int> found{};
-    for (auto&& doc_id : title_tri_ix.FindPossibleDocuments(query, pagerank)) {
-      if (limit == 0) break;
+    auto check_doc_title = [&](uint32_t doc_id) {
+      if (limit == 0) return false;
       auto doc = forward_ix.GetDocument(doc_id);
       ++ix_matches;
       auto lower_title{doc.get_title()};
@@ -265,11 +265,13 @@ int main(int argc, char* argv[]) {
         ss << "}";
         found.insert(doc_id);
       }
-    }
+      return true;
+    };
+    title_tri_ix.FindPossibleDocuments(query, pagerank, check_doc_title);
     if (limit != 0) {
-      for (auto&& doc_id : tri_ix.FindPossibleDocuments(query, pagerank)) {
-        if (limit == 0) break;
-        if (found.contains(doc_id)) continue;
+      auto check_doc = [&](uint32_t doc_id) {
+        if (limit == 0) return false;
+        if (found.contains(doc_id)) return true;
         auto doc = forward_ix.GetDocument(doc_id);
         ++ix_matches;
         if (doc.get_text().find(query) != std::string::npos) {
@@ -293,7 +295,9 @@ int main(int argc, char* argv[]) {
           // ss << \"text\": " << doc.get_text();
           ss << "}";
         }
-      }
+        return true;
+      };
+      tri_ix.FindPossibleDocuments(query, pagerank, check_doc);
     }
     ss << "],";
 
