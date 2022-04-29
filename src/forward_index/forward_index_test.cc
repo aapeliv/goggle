@@ -7,7 +7,12 @@
 using ::testing::UnorderedElementsAre;
 
 TEST(DocIndex, Basic) {
-  DocIndex ix{};
+  leveldb::DB* db;
+  leveldb::Options options;
+  options.create_if_missing = true;
+  leveldb::Status status = leveldb::DB::Open(options, "test_db", &db);
+
+  DocIndex ix{db};
   // add some documents
   ix.AddDocument(
       Document(1, 77, "Columbia", "NY, NY", std::vector<std::string>{}));

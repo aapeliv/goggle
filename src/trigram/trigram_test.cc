@@ -9,7 +9,12 @@
 using ::testing::UnorderedElementsAre;
 
 TEST(TrigramIndex, Basic) {
-  TrigramIndex ix{};
+  leveldb::DB* db;
+  leveldb::Options options;
+  options.create_if_missing = true;
+  leveldb::Status status = leveldb::DB::Open(options, "test_db", &db);
+
+  TrigramIndex ix{"test", db};
   // add some documents
   ix.AddDocument(0, "hello this is a test");
   ix.AddDocument(1, "hello world");
