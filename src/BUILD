@@ -11,8 +11,8 @@ cc_proto_library(
 )
 
 cc_binary(
-    name = "server",
-    srcs = ["server.cc"],
+    name = "goggle",
+    srcs = ["goggle.cc"],
     data = [
         "//data",
     ],
