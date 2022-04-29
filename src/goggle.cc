@@ -42,7 +42,9 @@ int main(int argc, char* argv[]) {
   options.create_if_missing = true;
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);
   options.block_cache = leveldb::NewLRUCache(100 * 1024 * 1024);  // 100MB cache
-  leveldb::Status status = leveldb::DB::Open(options, absl::GetFlag(FLAGS_db_dir), &db);
+  LOG(INFO) << "Opening database at " << absl::GetFlag(FLAGS_db_dir);
+  leveldb::Status status =
+      leveldb::DB::Open(options, absl::GetFlag(FLAGS_db_dir), &db);
   CHECK(status.ok()) << "Failed to open leveldb";
 
   // check if the DB is indexed and ready
@@ -192,8 +194,9 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "Done saving...";
   } else {
     // exists_and_ready: load everything
-    std::string out;
+    LOG(INFO) << "Found ready database, loading index from disk";
 
+    std::string out;
     auto s = db->Get(leveldb::ReadOptions(), "db_info", &out);
     CHECK(status.ok()) << "Couldn't read db info";
     goggle::DbInfo proto_db_info{};
@@ -208,6 +211,7 @@ int main(int argc, char* argv[]) {
 
     title_tri_ix.LoadFromDB();
     tri_ix.LoadFromDB();
+    LOG(INFO) << "Loaded index from disk";
   }
 
   httplib::Server srv;
