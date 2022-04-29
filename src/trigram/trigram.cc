@@ -1,5 +1,6 @@
 #include "src/trigram/trigram.h"
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <string_view>
@@ -93,11 +94,13 @@ void TrigramIndex::FindPossibleDocuments(
               // ordered before) the second
               return GetContainerAt(a).size() < GetContainerAt(b).size();
             });
-  // LOG(INFO) << "Have trigrams:";
-  // for (auto&& trigram : trigrams) {
-  //   LOG(INFO) << "Have trigram: " << ix_to_string(trigram)
-  //             << ", size: " << GetContainerAt(trigram).size();
-  // }
+  LOG(INFO) << "Have trigrams:";
+  for (auto&& trigram : trigrams) {
+    LOG(INFO) << "Have trigram: " << ix_to_string(trigram)
+              << ", size: " << GetContainerAt(trigram).size();
+  }
+
+  auto total_docs = importance->size();
 
   auto cmp = std::bind(doc_order, std::cref(importance), std::placeholders::_1,
                        std::placeholders::_2);
@@ -112,21 +115,42 @@ void TrigramIndex::FindPossibleDocuments(
       // copy the docs into remaining docs
       remaining_docs = {docs.begin(), docs.end()};
     } else {
-      // for others we intersect
-      // todo: this is a really dumb + slow algorithm
-      auto it = remaining_docs.begin();
-      while (it != remaining_docs.end()) {
-        uint32_t doc_id = *it;
-        // the trigram lists are ordered according to
-        if (!std::binary_search(docs.begin(), docs.end(), doc_id, cmp)) {
-          remaining_docs.erase(it);
-        } else {
-          ++it;
+      if (docs.size() > 0.8 * total_docs) {
+        LOG(INFO) << "More than 80\% docs for this trigram, breaking";
+        break;
+      }
+      if (remaining_docs.size() < 50) {
+        LOG(INFO) << "Less than 50 docs, breaking";
+        break;
+      }
+      if (remaining_docs.size() > 0.01 * total_docs) {
+        // if the two sets being intersected are huge; then we do a linear scan
+        // through both for the intersection
+
+        // we use an intersection for sorted ranges: this does a linear search
+        // through the trigrams
+        container_type intersection{};
+        std::set_intersection(docs.begin(), docs.end(), remaining_docs.begin(),
+                              remaining_docs.end(),
+                              std::back_inserter(intersection), cmp);
+        remaining_docs = std::move(intersection);
+      } else {
+        // if the two sets are not huge, we do a binary search for each doc in
+        // the smaller list against the bigger one
+        auto it = remaining_docs.begin();
+        while (it != remaining_docs.end()) {
+          uint32_t doc_id = *it;
+          // the trigram lists are ordered according to
+          if (!std::binary_search(docs.begin(), docs.end(), doc_id, cmp)) {
+            remaining_docs.erase(it);
+          } else {
+            ++it;
+          }
         }
       }
     }
-    // LOG(INFO) << "After trigram " << ix_to_string(ix) << ", have "
-    //           << remaining_docs.size() << " docs left";
+    LOG(INFO) << "After trigram " << ix_to_string(ix) << ", have "
+              << remaining_docs.size() << " docs left";
   }
   LOG(INFO) << "Matched " << remaining_docs.size() << " docs";
   for (auto&& doc_id : remaining_docs) {
