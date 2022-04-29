@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
                       "application/json; charset=utf-8");
     }
     auto query = req.get_param_value("q");
-    int limit = 100;
+    int limit = 12;
     if (req.has_param("pl")) {
       limit = std::stoi(req.get_param_value("pl"));
     }
