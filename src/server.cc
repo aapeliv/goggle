@@ -39,14 +39,14 @@ int main() {
   double total_page_goodness = 0.;
 
   auto backlinks = extract_dump(
-      // "data/"
-      // "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
-      // "data/"
-      // "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
       "data/"
-      "enwiki-20220420-pages-articles-multistream-index.txt",
+      "enwiki-20220401-pages-articles-multistream-index1.txt-p1p41242",
       "data/"
-      "enwiki-20220420-pages-articles-multistream.xml.bz2",
+      "enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
+      // "data/"
+      // "enwiki-20220420-pages-articles-multistream-index.txt",
+      // "data/"
+      // "enwiki-20220420-pages-articles-multistream.xml.bz2",
       [&](std::unique_ptr<Document> doc) {
         doc->set_id(N);
         tri_ix.AddDocument(N, doc->get_text());
