@@ -124,10 +124,6 @@ void TrigramIndex::FindPossibleDocuments(
         LOG(INFO) << "More than 80\% docs for this trigram, breaking";
         break;
       }
-      if (remaining_docs.size() < 50) {
-        LOG(INFO) << "Less than 50 docs, breaking";
-        break;
-      }
       if (remaining_docs.size() > 1000 &&
           remaining_docs.size() > 0.05 * docs.size()) {
         // if the two sets being intersected are huge; then we do a linear scan
