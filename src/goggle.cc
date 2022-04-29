@@ -7,6 +7,9 @@
 #include "absl/flags/usage.h"
 #include "glog/logging.h"
 #include "httplib.h"
+#include "leveldb/cache.h"
+#include "leveldb/db.h"
+#include "leveldb/filter_policy.h"
 #include "src/db.pb.h"
 #include "src/doc.h"
 #include "src/escape_json.h"
@@ -37,6 +40,8 @@ int main(int argc, char* argv[]) {
   leveldb::DB* db;
   leveldb::Options options;
   options.create_if_missing = true;
+  options.filter_policy = leveldb::NewBloomFilterPolicy(10);
+  options.block_cache = leveldb::NewLRUCache(100 * 1024 * 1024);  // 100MB cache
   leveldb::Status status = leveldb::DB::Open(options, "goggle_db", &db);
   CHECK(status.ok()) << "Failed to open leveldb";
 

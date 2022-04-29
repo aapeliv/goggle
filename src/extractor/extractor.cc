@@ -242,13 +242,14 @@ absl::flat_hash_map<std::string, std::vector<std::string>> extract_dump(
     auto percentage = (double)end / dump_sz;
 
     auto elapsed = std::chrono::duration_cast<ms>(hrc::now() - start_time);
-    auto expected_total_s = elapsed.count() / percentage / 60'000.;
+    auto expected_total_min = elapsed.count() / percentage / 60'000.;
+    auto elapsed_min = elapsed.count() / 60'000.;
 
     LOG(INFO) << "chunk: " << start << " to " << end << ", at "
-              << 100. * percentage << "%, ratio was " << true_ratio << "... "
-              << total_time.count() << " ms text processing ... expect "
-              << expected_total_s << " min total, "
-              << expected_total_s - elapsed.count() / 60'000. << " min left.";
+              << 100. * percentage << "%, ratio was " << true_ratio
+              << "... elapsed " << elapsed_min << " min, expect "
+              << expected_total_min << " min total, "
+              << expected_total_min - elapsed_min << " min left.";
   }
 
   dump.close();
