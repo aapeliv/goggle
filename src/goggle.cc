@@ -259,9 +259,9 @@ int main(int argc, char* argv[]) {
         ss << "\"id\": " << doc_id << ",";
         ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
         ss << "\"is_title_match\": true,";
-        ss << "\"title\": \"" << doc.get_title() << "\"";
+        ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
         if (real_matches == 1 && req.has_param("x")) {
-          ss << ",\"text\": \"" << doc.get_text() << "\"";
+          ss << ",\"text\": \"" << escape_json(doc.get_text()) << "\"";
         }
         // ss << \"text\": " << doc.get_text();
         ss << "}";
