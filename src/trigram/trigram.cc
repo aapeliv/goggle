@@ -126,6 +126,7 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
       }
       if (remaining_docs.size() > 1000 &&
           remaining_docs.size() > 0.05 * docs.size()) {
+        LOG(INFO) << "Using sequential strategy";
         // if the two sets being intersected are huge; then we do a linear scan
         // through both for the intersection
 
@@ -137,6 +138,7 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
                               std::back_inserter(intersection), cmp);
         remaining_docs = std::move(intersection);
       } else {
+        LOG(INFO) << "Using binary search strategy";
         // if the two sets are not huge, we do a binary search for each doc in
         // the smaller list against the bigger one
         auto it = remaining_docs.begin();
@@ -167,7 +169,7 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
     if (check_doc(doc_id)) {
       matches.push_back(doc_id);
     }
-    if (matches.size() > page_size) break;
+    if (matches.size() >= page_size) break;
   }
 
   return matches;
