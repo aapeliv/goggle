@@ -20,6 +20,7 @@ cc_library(
         ":trigram_splitter",
         "@com_github_google_glog//:glog",
         "@com_github_google_leveldb//:leveldb",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 

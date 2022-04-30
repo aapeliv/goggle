@@ -5,7 +5,9 @@
 #include <chrono>
 #include <memory>
 #include <string_view>
+#include <thread>
 
+#include "absl/synchronization/mutex.h"
 #include "leveldb/db.h"
 #include "src/trigram/trigram.pb.h"
 
@@ -169,23 +171,59 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
 
   auto before_match = clk::now();
 
+  // guards remaining_docs
+  // absl::Mutex remaining_docs_mtx;
+
+  // guards matches
+  absl::Mutex matches_mtx;
   std::vector<uint32_t> matches{};
 
-  size_t checked = 0;
-  for (auto&& doc_id : remaining_docs) {
-    ++checked;
-    if (check_doc(doc_id)) {
-      matches.push_back(doc_id);
-    }
-    if (matches.size() >= page_size) break;
+  std::atomic<int> next_id = 0;
+  std::atomic<int> found = 0;
+
+  auto thread_count = std::thread::hardware_concurrency();
+  if (thread_count == 0) {
+    thread_count = 4;
   }
 
-  duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(clk::now() - start)
-          .count();
+  LOG(INFO) << "About to check docs with " << thread_count << " threads";
 
-  LOG(INFO) << "Had to check " << checked << " docs before finding "
-            << page_size << " in " << duration << " ms";
+  {
+    std::vector<std::unique_ptr<std::jthread>> threads{};
+
+    for (int i = 0; i < thread_count; ++i) {
+      threads.push_back(std::make_unique<std::jthread>([&]() {
+        while (found < page_size) {
+          // grab a doc
+          int ix = next_id++;
+          if (ix >= remaining_docs.size()) {
+            return;
+          }
+          uint32_t doc_id = remaining_docs[ix];
+          if (check_doc(doc_id)) {
+            absl::MutexLock lock(&matches_mtx);
+            matches.push_back(doc_id);
+            ++found;
+          }
+        }
+      }));
+    }
+  }
+
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(clk::now() -
+                                                                   before_match)
+                 .count();
+
+  LOG(INFO) << "Had to check " << next_id << " docs before finding " << found
+            << " in " << duration << " ms";
+
+  std::sort(matches.begin(), matches.end(), cmp);
+
+  if (matches.size() > page_size) {
+    LOG(INFO) << "Shrinking matches from " << matches.size() << " to "
+              << page_size;
+    matches.resize(page_size);
+  }
 
   return matches;
 }

@@ -246,36 +246,19 @@ int main(int argc, char* argv[]) {
       return lower_title.find(query) != std::string::npos;
     };
 
-    long total_get = 0;
-    long total_find = 0;
-
     auto matches = title_tri_ix.FindPossibleDocuments(query, pagerank,
                                                       check_doc_title, limit);
     absl::flat_hash_set<int> title_matches{matches.begin(), matches.end()};
     if (limit != matches.size()) {
       auto check_doc = [&](uint32_t doc_id) {
         if (title_matches.contains(doc_id)) return false;
-
-        auto start = clk::now();
         auto text = forward_ix.GetDocumentBody(doc_id);
-        total_get += std::chrono::duration_cast<std::chrono::microseconds>(
-                         clk::now() - start)
-                         .count();
-
-        start = clk::now();
-        bool match = text.find(query) != std::string::npos;
-        total_find += std::chrono::duration_cast<std::chrono::microseconds>(
-                          clk::now() - start)
-                          .count();
-        return match;
+        return text.find(query) != std::string::npos;
       };
       auto out = tri_ix.FindPossibleDocuments(query, pagerank, check_doc,
                                               limit - matches.size());
       std::copy(out.begin(), out.end(), std::back_inserter(matches));
     }
-
-    LOG(INFO) << "Get took " << total_get / 1000. << " ms";
-    LOG(INFO) << "Find took " << total_find / 1000. << " ms";
 
     std::stringstream ss{};
     bool is_first = true;
