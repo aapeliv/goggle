@@ -24,4 +24,6 @@ class DocIndex {
 
   // retrieve doc from the index
   Document GetDocument(uint32_t id);
+  // retrieve only doc body
+  std::string GetDocumentBody(uint32_t id);
 };

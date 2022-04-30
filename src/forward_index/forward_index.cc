@@ -66,3 +66,13 @@ Document DocIndex::GetDocument(uint32_t id) {
   return Document(proto_doc.id(), proto_doc.wiki_id(), proto_doc.title(),
                   std::move(text), std::vector<std::string>{});
 }
+
+std::string DocIndex::GetDocumentBody(uint32_t id) {
+  std::string text;
+  CHECK(
+      data_
+          ->Get(leveldb::ReadOptions(), "doc_text/" + std::to_string(id), &text)
+          .ok())
+      << "Failed to read doc text";
+  return text;
+}

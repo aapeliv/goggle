@@ -255,13 +255,13 @@ int main(int argc, char* argv[]) {
         if (title_matches.contains(doc_id)) return false;
 
         auto start = clk::now();
-        auto doc = forward_ix.GetDocument(doc_id);
+        auto text = forward_ix.GetDocumentBody(doc_id);
         total_get += std::chrono::duration_cast<std::chrono::microseconds>(
                          clk::now() - start)
                          .count();
 
         start = clk::now();
-        bool match = doc.get_text().find(query) != std::string::npos;
+        bool match = text.find(query) != std::string::npos;
         total_find += std::chrono::duration_cast<std::chrono::microseconds>(
                           clk::now() - start)
                           .count();
