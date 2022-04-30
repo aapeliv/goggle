@@ -41,7 +41,8 @@ int main(int argc, char* argv[]) {
   leveldb::Options options;
   options.create_if_missing = true;
   options.filter_policy = leveldb::NewBloomFilterPolicy(10);
-  options.block_cache = leveldb::NewLRUCache(100 * 1024 * 1024);  // 100MB cache
+  options.block_cache =
+      leveldb::NewLRUCache(1024 * 1024 * 1024);  // 1 GiB cache
   LOG(INFO) << "Opening database at " << absl::GetFlag(FLAGS_db_dir);
   leveldb::Status status =
       leveldb::DB::Open(options, absl::GetFlag(FLAGS_db_dir), &db);
