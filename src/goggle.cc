@@ -338,9 +338,11 @@ int main(int argc, char* argv[]) {
     res.set_header("Access-Control-Allow-Methods", "OPTIONS, GET, POST, HEAD");
   });
 
-  LOG(INFO) << "Serving on 8080.";
+  auto port = absl::GetFlag(FLAGS_enable_tls) ? 443 : 8080;
 
-  srv->listen("0.0.0.0", 8080);
+  LOG(INFO) << "Serving on " << port << ".";
+
+  srv->listen("0.0.0.0", port);
 
   delete db;
 }
