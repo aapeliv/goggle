@@ -95,7 +95,6 @@ int main(int argc, char* argv[]) {
           doc->set_id(N);
           tri_ix.AddDocument(N, doc->get_text());
           title_tri_ix.AddDocument(N, doc->get_title());
-          // TODO
           forward_ix.AddDocument(doc.get());
           ids[doc->get_title()] = N;
           out_link_count.push_back(doc->get_links().size());
@@ -125,7 +124,6 @@ int main(int argc, char* argv[]) {
 
     LOG(INFO) << "Have " << N << " docs";
 
-    // ** Pagerank computation
     LOG(INFO) << "About to compute PageRank";
 
     // turn backlinks map into ids map
