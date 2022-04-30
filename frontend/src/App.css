@@ -1,5 +1,6 @@
 .App {
   /* text-align: center; */
+  padding: 1rem;
 }
 
 .App-logo {
@@ -35,4 +36,45 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.box {
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.551);
+  padding: 10px 15px;
+  font-size: 1.2rem;
+  min-width: 500px;
+  margin: 20px 0px;
+
+}
+
+.result-box {
+  margin: 0px 10px;
+}
+
+.hint {
+  font-size: 0.8rem;
+}
+
+.tip {
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.result {
+  margin: 40px 0px 20px 0px;
+}
+
+.page-title {
+  font-size: 1.2rem;
+  margin-bottom: 4px;
+}
+
+.page-title > a {
+  text-decoration: none;
+}
+
+.page-snippet {
+  margin-top: 4px;
+
 }
