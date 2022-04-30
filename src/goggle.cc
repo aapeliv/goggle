@@ -292,6 +292,8 @@ int main(int argc, char* argv[]) {
       }
       ss << "{";
       ss << "\"id\": " << doc_id << ",";
+      ss << "\"url\": \"https://en.wikipedia.org/?curid=" << doc.get_wiki_id()
+         << "\",";
       ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
       ss << "\"title\": \"" << escape_json(doc.get_title()) << "\",";
       if (title_matches.contains(doc_id)) {
