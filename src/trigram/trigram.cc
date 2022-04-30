@@ -124,6 +124,10 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
         LOG(INFO) << "More than 80\% docs for this trigram, breaking";
         break;
       }
+      if (docs.size() < page_size) {
+        LOG(INFO) << "Less than page size docs, breaking";
+        break;
+      }
       if (remaining_docs.size() > 1000 &&
           remaining_docs.size() > 0.05 * docs.size()) {
         LOG(INFO) << "Using sequential strategy";
@@ -163,14 +167,25 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
   LOG(INFO) << "Matched " << remaining_docs.size() << " docs in " << duration
             << " ms";
 
+  auto before_match = clk::now();
+
   std::vector<uint32_t> matches{};
 
+  size_t checked = 0;
   for (auto&& doc_id : remaining_docs) {
+    ++checked;
     if (check_doc(doc_id)) {
       matches.push_back(doc_id);
     }
     if (matches.size() >= page_size) break;
   }
+
+  duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(clk::now() - start)
+          .count();
+
+  LOG(INFO) << "Had to check " << checked << " docs before finding "
+            << page_size << " in " << duration << " ms";
 
   return matches;
 }
