@@ -29,16 +29,6 @@ http_archive(
     urls = ["https://github.com/google/glog/archive/a8e0007e96ff96145022c488e367da10f835c75d.zip"],
 )
 
-# cpp-httplib
-
-http_archive(
-    name = "httplib",
-    build_file = "//:third_party/httplib.BUILD",
-    sha256 = "7f9a8670719cd4b66e70bd1f8af85b6d772ed2fac3d2e528a1bcc494d10b4fb2",
-    strip_prefix = "cpp-httplib-d73395e1dc652465fa9524266cd26ad57365491f",
-    urls = ["https://github.com/yhirose/cpp-httplib/archive/d73395e1dc652465fa9524266cd26ad57365491f.zip"],
-)
-
 # googletest
 
 http_archive(
@@ -94,3 +84,23 @@ load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_
 rules_proto_dependencies()
 
 rules_proto_toolchains()
+
+# openssl
+
+http_archive(
+    name = "openssl",
+    build_file = "//:third_party/openssl.BUILD",
+    sha256 = "22d6588e4a7c5ad48fcac2fbf1d035bd43258c22a49457dad0539ded0651b4d2",
+    strip_prefix = "openssl-OpenSSL_1_1_1j",
+    url = "https://github.com/openssl/openssl/archive/OpenSSL_1_1_1j.tar.gz",
+)
+
+# cpp-httplib
+
+http_archive(
+    name = "httplib",
+    build_file = "//:third_party/httplib.BUILD",
+    sha256 = "7f9a8670719cd4b66e70bd1f8af85b6d772ed2fac3d2e528a1bcc494d10b4fb2",
+    strip_prefix = "cpp-httplib-d73395e1dc652465fa9524266cd26ad57365491f",
+    urls = ["https://github.com/yhirose/cpp-httplib/archive/d73395e1dc652465fa9524266cd26ad57365491f.zip"],
+)

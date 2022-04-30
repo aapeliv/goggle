@@ -1,3 +1,4 @@
+#define CPPHTTPLIB_OPENSSL_SUPPORT
 #include <chrono>
 #include <memory>
 
@@ -26,6 +27,9 @@ ABSL_FLAG(std::string, dump_file,
           "path to dump file");
 ABSL_FLAG(std::string, frontend_serve_dir, "none",
           "directory to serve frontend from");
+ABSL_FLAG(bool, enable_tls, false, "enable TLS");
+ABSL_FLAG(std::string, server_key, "key.pem", "TLS key");
+ABSL_FLAG(std::string, server_cert, "cert.pem", "TLS cert");
 
 using clk = std::chrono::steady_clock;
 
@@ -220,19 +224,22 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "All set up, have " << N << " docs";
 
-  httplib::Server srv;
+  std::unique_ptr<httplib::Server> srv;
+
+  if (absl::GetFlag(FLAGS_enable_tls)) {
+    srv = std::make_unique<httplib::SSLServer>(
+        absl::GetFlag(FLAGS_server_cert).c_str(),
+        absl::GetFlag(FLAGS_server_key).c_str());
+  } else {
+    srv = std::make_unique<httplib::Server>();
+  }
 
   if (absl::GetFlag(FLAGS_frontend_serve_dir) != "none") {
-    CHECK(srv.set_mount_point("/", absl::GetFlag(FLAGS_frontend_serve_dir)))
+    CHECK(srv->set_mount_point("/", absl::GetFlag(FLAGS_frontend_serve_dir)))
         << "Couldn't mount frontend serve dir";
   }
 
-  srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
-    res.set_content("{\"msg\": \"hello world\"}",
-                    "application/json; charset=utf-8");
-  });
-
-  srv.Get("/query", [&](const httplib::Request& req, httplib::Response& res) {
+  srv->Get("/query", [&](const httplib::Request& req, httplib::Response& res) {
     auto start = clk::now();
     if (!req.has_param("q")) {
       res.set_content("{\"error\": \"missing query\"}",
@@ -333,7 +340,7 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "Serving on 8080.";
 
-  srv.listen("0.0.0.0", 8080);
+  srv->listen("0.0.0.0", 8080);
 
   delete db;
 }
