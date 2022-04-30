@@ -231,6 +231,8 @@ int main(int argc, char* argv[]) {
                       "application/json; charset=utf-8");
     }
     auto query = req.get_param_value("q");
+    std::transform(query.begin(), query.end(), query.begin(),
+                   [](auto c) { return std::tolower(c); });
     int limit = 8;
     if (req.has_param("pl")) {
       limit = std::min(std::stoi(req.get_param_value("pl")), 200);
