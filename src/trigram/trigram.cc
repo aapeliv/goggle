@@ -115,6 +115,7 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
   container_type remaining_docs{};
   bool is_first = true;
   for (auto& ix : trigrams) {
+    auto start_step = clk::now();
     container_type& docs = GetContainerAt(ix);
     if (is_first) {
       is_first = false;
@@ -159,8 +160,13 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
         }
       }
     }
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        clk::now() - start_step)
+                        .count();
+
     LOG(INFO) << "After trigram " << ix_to_string(ix) << ", have "
-              << remaining_docs.size() << " docs left";
+              << remaining_docs.size() << " docs left, took " << duration
+              << " ms";
   }
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(clk::now() - start)
@@ -171,9 +177,6 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
 
   auto before_match = clk::now();
 
-  // guards remaining_docs
-  // absl::Mutex remaining_docs_mtx;
-
   // guards matches
   absl::Mutex matches_mtx;
   std::vector<uint32_t> matches{};
@@ -181,7 +184,7 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
   std::atomic<int> next_id = 0;
   std::atomic<int> found = 0;
 
-  auto thread_count = std::thread::hardware_concurrency();
+  auto thread_count = 2 * std::thread::hardware_concurrency();
   if (thread_count == 0) {
     thread_count = 4;
   }

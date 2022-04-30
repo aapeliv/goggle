@@ -24,6 +24,8 @@ ABSL_FLAG(std::string, index_file,
 ABSL_FLAG(std::string, dump_file,
           "data/enwiki-20220401-pages-articles-multistream1.xml-p1p41242.bz2",
           "path to dump file");
+ABSL_FLAG(std::string, frontend_serve_dir, "none",
+          "directory to serve frontend from");
 
 using clk = std::chrono::steady_clock;
 
@@ -219,6 +221,12 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "All set up, have " << N << " docs";
 
   httplib::Server srv;
+
+  if (absl::GetFlag(FLAGS_frontend_serve_dir) != "none") {
+    CHECK(srv.set_mount_point("/", absl::GetFlag(FLAGS_frontend_serve_dir)))
+        << "Couldn't mount frontend serve dir";
+  }
+
   srv.Get("/", [](const httplib::Request&, httplib::Response& res) {
     res.set_content("{\"msg\": \"hello world\"}",
                     "application/json; charset=utf-8");
