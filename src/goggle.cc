@@ -291,10 +291,28 @@ int main(int argc, char* argv[]) {
       ss << "{";
       ss << "\"id\": " << doc_id << ",";
       ss << "\"pagerank\": " << (*pagerank)[doc_id] * N << ",";
-      ss << "\"is_title_match\": "
-         << (title_matches.contains(doc_id) ? "true" : "false") << ",";
-      ss << "\"title\": \"" << escape_json(doc.get_title()) << "\"";
-      // ss << \"text\": " << doc.get_text();
+      ss << "\"title\": \"" << escape_json(doc.get_title()) << "\",";
+      if (title_matches.contains(doc_id)) {
+        // title match
+        ss << "\"is_title_match\": true,";
+        ss << "\"snippet\": \"" + escape_json(doc.get_text().substr(0, 120)) +
+                  "\"";
+      } else {
+        // text match
+        ss << "\"is_title_match\": false,";
+        auto text = doc.get_text();
+        auto preview_start = text.find(query);
+        // a bit before
+        auto pre_preview_start = std::max<int>(preview_start - 60, 0);
+        std::string preview{};
+        preview +=
+            text.substr(pre_preview_start, preview_start - pre_preview_start);
+        preview += "<b>";
+        preview += text.substr(preview_start, query.size());
+        preview += "</b>";
+        preview += text.substr(preview_start + query.size(), 60);
+        ss << "\"snippet\": \"" + escape_json(preview) + "\"";
+      }
       ss << "}";
     }
 
