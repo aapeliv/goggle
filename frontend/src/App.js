@@ -19,7 +19,7 @@ function App() {
   return (
     <div className="App">
       <div className="tip">Source code on <a href="https://github.com/aapeliv/goggle">GitHub</a>.</div>
-      <img src="/goggle_text.png" height="200" /><br />
+      <img className="logo" src="/goggle_text.png" /><br />
       <input
         type="text"
         placeholder="Search 6,487,373 Wikipedia articles"
