@@ -124,7 +124,7 @@ std::vector<uint32_t> TrigramIndex::FindPossibleDocuments(
         LOG(INFO) << "More than 80\% docs for this trigram, breaking";
         break;
       }
-      if (docs.size() < page_size) {
+      if (remaining_docs.size() < page_size) {
         LOG(INFO) << "Less than page size docs, breaking";
         break;
       }
