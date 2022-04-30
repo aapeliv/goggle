@@ -46,3 +46,35 @@ bazel run //src:goggle
 ```sh
 curl "http://localhost:8080/query?q=finland"
 ```
+
+## Running the whole thing self contained
+
+1. Build an optimized binary
+
+```sh
+bazel build --config=optz //src:goggle`
+```
+
+2. Build an optimized frontend
+
+```sh
+cd frontend/
+npm run build
+```
+
+3. Get a TLS certificate and place them in the working directory
+
+4. Download the full Wikipedia dump and index
+
+5. Run the full thing
+
+```sh
+./bazel-bin/src/goggle \
+  --db_dir=prod_db/ \
+  --dump_file path/to/articles-multistream.xml.bz2 \
+  --index_file path/to/articles-multistream-index.txt \
+  --enable_tls \
+  --server_cert path/to/cert.pem \
+  --server_key path/to/key.pem \
+  --frontend_server_dir frontend/build/
+```
