@@ -1,8 +1,14 @@
-![The Wikipedia Goggle logo](goggle_text.png)
+![The Wikipedia Goggle logo](docs/goggle_text.png)
 
 # The Wikipedia Goggle
 
 The Wikipedia Goggle is a search engine for the English Wikipedia, using a trigram index and a ranking algorithm similar to Google's original PageRank, implemented in modern C++.
+
+---
+
+![An animation of the system working](docs/demo.gif)
+
+---
 
 ## Getting started
 
